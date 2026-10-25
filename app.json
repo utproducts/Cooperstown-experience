@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "Cooperstown Experience",
+    "slug": "cooperstown-experience",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "cooperstown",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.utproducts.cooperstown",
+      "supportsTablet": true,
+      "icon": "./assets/expo.icon",
+      "associatedDomains": [],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.utproducts.cooperstown",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E2340",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/favicon.png",
+      "name": "Cooperstown Experience",
+      "shortName": "Cooperstown",
+      "themeColor": "#0E2340",
+      "backgroundColor": "#F7F2E8"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0E2340",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 76
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Directors use the camera to scan player check-in QR codes.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C8102E"
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {}
+    }
+  }
+}
