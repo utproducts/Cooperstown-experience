@@ -41,7 +41,7 @@ const LAST = ['Reed', 'Diaz', 'Hart', 'Nguyen', 'Brooks', 'Sullivan', 'Patel', '
 const PARENT = ['Jamie', 'Chris', 'Alex', 'Morgan', 'Taylor', 'Jordan', 'Casey', 'Riley', 'Drew', 'Sam'];
 
 export const DEMO_USERS = {
-  fan: { id: 'demo-parent', email: 'parent@demo.app', name: 'Jamie Reed', role: 'fan' as const },
+  fan: { id: 'demo-parent', email: 'parent@demo.app', name: 'Libby Reed', role: 'fan' as const },
   director: { id: 'demo-director', email: 'director@demo.app', name: 'Pat Director', role: 'director' as const },
 };
 

@@ -1,3 +1,4 @@
+import { DemoRoleSwitch } from '@/components/demo-role-switch';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -46,6 +47,7 @@ export default function FanHome() {
 
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
+      <DemoRoleSwitch />
       <Hero eyebrow="Cooperstown" title={firstName ? `Welcome, ${firstName}` : 'Welcome'} subtitle={status}>
         <FamilyWeekLabel light />
         {d.myTeams.length > 0 && (

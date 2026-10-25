@@ -1,3 +1,4 @@
+import { DemoRoleSwitch } from '@/components/demo-role-switch';
 import { router } from 'expo-router';
 
 import { Badge, Button, Caption, Card, Divider, H1, H3, ListItem, Screen } from '@/components/ui';
@@ -26,6 +27,7 @@ export default function DirectorMore() {
         <Caption>{profile?.email} · Director</Caption>
         {backend.mode === 'demo' && <Badge label="Demo mode — data is stored on this device" tone="gold" />}
       </Card>
+      <DemoRoleSwitch />
       <Card style={{ gap: 0 }}>
         <ListItem icon="calendar" title="Weeks" subtitle="Switch weeks, create the season, edit dates and venue" onPress={() => router.push('/director/event')} />
         <Divider />

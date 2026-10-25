@@ -1,3 +1,4 @@
+import { DemoRoleSwitch } from '@/components/demo-role-switch';
 import { router } from 'expo-router';
 
 import { Badge, Button, Caption, Card, Divider, H1, H3, ListItem, Screen } from '@/components/ui';
@@ -13,6 +14,7 @@ export default function More() {
         <Caption>{profile?.email}</Caption>
         {backend.mode === 'demo' && <Badge label="Demo mode" tone="gold" />}
       </Card>
+      <DemoRoleSwitch />
       <Card style={{ gap: 0 }}>
         <ListItem icon="shield" title="My teams" subtitle="Follow a team with its code" onPress={() => router.push('/fan/teams')} />
         <Divider />

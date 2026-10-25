@@ -31,6 +31,12 @@ export function createDemoBackend(appUrl: string): Backend {
           outbox = saved.outbox ?? [];
         }
         profile = saved.profile ?? null;
+        // Keep the sample users' names current if they changed since this device last saved.
+        const demoUser = Object.values(DEMO_USERS).find((u) => u.id === profile?.id);
+        if (demoUser && profile) profile = { ...profile, name: demoUser.name };
+        db.players.forEach((p) => {
+          if (p.guardianEmail === DEMO_USERS.fan.email) p.guardianName = DEMO_USERS.fan.name;
+        });
       }
     } catch {
       // storage unavailable (private mode, SSR) — run with fresh seed

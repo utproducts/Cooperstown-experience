@@ -1,3 +1,4 @@
+import { DemoRoleSwitch } from '@/components/demo-role-switch';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -37,6 +38,7 @@ export default function DirectorDashboard() {
 
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
+      <DemoRoleSwitch />
       <Hero
         eyebrow="Director"
         title={event?.name ?? 'No event yet'}
