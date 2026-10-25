@@ -20,7 +20,6 @@ export default function Meetings() {
   const [busy, setBusy] = useState(false);
 
   const mine = bookings.data.filter((b) => b.userId === profile?.id);
-  const countFor = (slotId: string) => bookings.data.filter((b) => b.slotId === slotId).length;
   const days = useMemo(() => [...new Set(slots.data.map((s) => localDateKey(s.startsAt, tz)))], [slots.data, tz]);
 
   async function book(slot: MeetingSlot) {
@@ -86,8 +85,7 @@ export default function Meetings() {
           {slots.data
             .filter((s) => localDateKey(s.startsAt, tz) === day)
             .map((s) => {
-              const taken = countFor(s.id);
-              const left = s.capacity - taken;
+              const left = s.capacity - s.bookedCount;
               const booked = mine.some((b) => b.slotId === s.id);
               return (
                 <Card key={s.id}>

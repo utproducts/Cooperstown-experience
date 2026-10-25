@@ -1,0 +1,26 @@
+# Minimal Supabase CLI config. `supabase init` / `supabase link` will fill in
+# any defaults not listed here.
+project_id = "cooperstown-experience"
+
+[auth]
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["cooperstown://"]
+
+[auth.email]
+enable_signup = true
+# 6-digit codes are entered in the app (no magic-link redirect needed).
+otp_length = 6
+otp_expiry = 900
+
+[functions.push-dispatch]
+verify_jwt = true
+
+[functions.send-invites]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.stripe-webhook]
+# Stripe can't send a Supabase JWT; the function verifies Stripe's signature instead.
+verify_jwt = false

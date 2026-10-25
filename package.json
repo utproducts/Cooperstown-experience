@@ -1,5 +1,5 @@
 {
-  "name": "app",
+  "name": "cooperstown-experience",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
@@ -42,6 +42,7 @@
     "react-native-worklets": "0.13.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@types/react": "~19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~58.0.0",
@@ -50,11 +51,13 @@
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:db": "node supabase/tests/rls.test.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }

@@ -102,6 +102,8 @@ export interface MeetingSlot {
   startsAt: string;
   durationMinutes: number;
   capacity: number;
+  /** Maintained by the server so families see availability without seeing others' bookings. */
+  bookedCount: number;
 }
 
 export interface MeetingBooking {

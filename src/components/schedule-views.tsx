@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { C, S } from '@/constants/theme';
 import type { Game, Team } from '@/data/types';
@@ -52,8 +52,16 @@ export function GamesByDay({
 }
 
 export function StandingsTable({ teams, games, highlight = [] }: { teams: Team[]; games: Game[]; highlight?: string[] }) {
+  const { width } = useWindowDimensions();
+  // Phones get W/L/RD only so team names have room; wider screens get every column.
+  const compact = width < 560;
   const rows = computeStandings(teams, games);
   const pools = [...new Set(rows.map((r) => r.pool))];
+  const cols = (r: (typeof rows)[number]) => {
+    const rd = r.runDiff > 0 ? `+${r.runDiff}` : r.runDiff;
+    return compact ? [r.wins, r.losses, rd] : [r.wins, r.losses, r.ties, r.runsFor, r.runsAgainst, rd];
+  };
+  const headers = compact ? ['W', 'L', 'RD'] : ['W', 'L', 'T', 'RS', 'RA', 'RD'];
   if (teams.length === 0) return <Empty title="No teams yet" />;
   return (
     <Stack>
@@ -61,7 +69,7 @@ export function StandingsTable({ teams, games, highlight = [] }: { teams: Team[]
         <Card key={pool} style={{ gap: 0, paddingVertical: S.sm }}>
           <Row style={styles.headRow}>
             <H3 style={{ flex: 1 }}>Pool {pool}</H3>
-            {['W', 'L', 'T', 'RS', 'RA', 'RD'].map((h) => (
+            {headers.map((h) => (
               <Text key={h} style={styles.headCell}>
                 {h}
               </Text>
@@ -75,7 +83,7 @@ export function StandingsTable({ teams, games, highlight = [] }: { teams: Team[]
                 <Text numberOfLines={1} style={styles.teamCell}>
                   {teamLabel(teams, r.teamId, null)}
                 </Text>
-                {[r.wins, r.losses, r.ties, r.runsFor, r.runsAgainst, r.runDiff > 0 ? `+${r.runDiff}` : r.runDiff].map((v, j) => (
+                {cols(r).map((v, j) => (
                   <Text key={j} style={styles.cell}>
                     {v}
                   </Text>

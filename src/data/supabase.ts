@@ -26,7 +26,7 @@ function snakeize(row: Record<string, unknown>): Record<string, unknown> {
 }
 
 /** Fields the client never writes directly (owned by the database). */
-const READ_ONLY: Partial<Record<TableName, string[]>> = { teams: ['code'] };
+const READ_ONLY: Partial<Record<TableName, string[]>> = { teams: ['code'], meeting_slots: ['bookedCount'] };
 
 export function createSupabaseBackend(url: string, anonKey: string): Backend {
   const client: SupabaseClient = createClient(url, anonKey, {

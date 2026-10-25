@@ -48,6 +48,7 @@ export default function DirectorMeetings() {
           startsAt: zonedToIso(day, t, event.timezone),
           durationMinutes: Number(duration) || 15,
           capacity: Math.max(1, Number(capacity) || 1),
+          bookedCount: 0,
         })),
       );
       setTimes('');

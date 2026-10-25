@@ -217,6 +217,7 @@ export function buildSeed(now = new Date()): SeedTables {
       startsAt: startsAt as string,
       durationMinutes: durationMinutes as number,
       capacity: capacity as number,
+      bookedCount: 0,
     })),
     meeting_bookings: [],
     photo_products: [

@@ -133,6 +133,16 @@ export function createDemoBackend(appUrl: string): Backend {
     },
 
     async insert(table, rows) {
+      if (table === 'meeting_bookings') {
+        for (const r of rows as Partial<Tables['meeting_bookings']>[]) {
+          const slot = db.meeting_slots.find((s) => s.id === r.slotId);
+          if (!slot) throw new Error('Session not found');
+          if (db.meeting_bookings.some((b) => b.slotId === r.slotId && b.userId === r.userId)) throw new Error('You already booked this session.');
+          if (slot.bookedCount >= slot.capacity) throw new Error('This session is full.');
+          slot.bookedCount++;
+        }
+        emit('meeting_slots');
+      }
       const created = rows.map((r) => ({ id: `${table}-${randomToken(10)}`, ...r })) as Tables[typeof table][];
       (db[table] as unknown[]).push(...clone(created));
       emit(table);
@@ -149,6 +159,13 @@ export function createDemoBackend(appUrl: string): Backend {
 
     async remove(table, ids) {
       const set = new Set(ids);
+      if (table === 'meeting_bookings') {
+        for (const b of db.meeting_bookings.filter((x) => set.has(x.id))) {
+          const slot = db.meeting_slots.find((s) => s.id === b.slotId);
+          if (slot) slot.bookedCount = Math.max(0, slot.bookedCount - 1);
+        }
+        emit('meeting_slots');
+      }
       (db[table] as unknown) = (db[table] as { id: string }[]).filter((r) => !set.has(r.id));
       emit(table);
     },
