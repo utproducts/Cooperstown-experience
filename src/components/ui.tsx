@@ -21,6 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { C, Fonts, MaxWidth, R, S } from '@/constants/theme';
 
+import { requestDialog } from './dialog-host';
+
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export function Icon({ name, size = 20, color = C.ink }: { name: IconName; size?: number; color?: string }) {
@@ -320,17 +322,17 @@ export function ErrorNote({ message }: { message: string | null }) {
   );
 }
 
-/** Cross-platform message box (Alert is a no-op on web). */
+/** Message box: system Alert on native, in-app dialog on web. */
 export function showMessage(title: string, message?: string) {
   if (Platform.OS === 'web') {
-    window.alert(message ? `${title}\n\n${message}` : title);
+    requestDialog({ title, message });
   } else {
     Alert.alert(title, message);
   }
 }
 
 export function confirmAction(title: string, message: string, confirmLabel = 'OK'): Promise<boolean> {
-  if (Platform.OS === 'web') return Promise.resolve(window.confirm(`${title}\n\n${message}`));
+  if (Platform.OS === 'web') return requestDialog({ title, message, confirmLabel, cancelLabel: 'Cancel', destructive: true });
   return new Promise((resolve) =>
     Alert.alert(title, message, [
       { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },

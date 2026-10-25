@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { DialogHost } from '@/components/dialog-host';
 import { C } from '@/constants/theme';
 import { BackendProvider, useAuth } from '@/data';
 import { getPushToken } from '@/lib/push';
@@ -40,6 +41,7 @@ export default function RootLayout() {
             headerShadowVisible: false,
           }}
         />
+        <DialogHost />
       </BackendProvider>
     </SafeAreaProvider>
   );

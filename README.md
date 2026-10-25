@@ -121,6 +121,8 @@ Directors can download a template from the import screen.
 
 ## Shipping
 
+- **Shareable preview:** `npm run build:preview` makes `dist-preview/`, a self-contained demo build that runs from any sub-path. It's used for the claude.ai preview link. It runs on demo data unless the Supabase variables are set at build time.
+
 - **Web:** `npx expo export -p web` creates `dist/`. Host it anywhere static (Vercel, Netlify, Cloudflare Pages) with a SPA fallback to `index.html`, so links like `/follow/CODE` and `/director/...` resolve.
 - **iOS and Android:**
   ```bash

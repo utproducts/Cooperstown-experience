@@ -57,7 +57,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:db": "node supabase/tests/rls.test.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:preview": "node scripts/build-preview.mjs"
   },
   "private": true
 }
