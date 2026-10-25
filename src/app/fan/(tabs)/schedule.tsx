@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { BracketView, GamesByDay, StandingsTable } from '@/components/schedule-views';
 import { H1, Screen, Segmented } from '@/components/ui';
+import { FamilyWeekLabel } from '@/components/week-picker';
 import { useFanData } from '@/data/fan';
 
 type Tab = 'mine' | 'all' | 'standings' | 'bracket';
@@ -13,6 +14,7 @@ export default function FanSchedule() {
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
       <H1>Schedule</H1>
+      <FamilyWeekLabel />
       <Segmented
         value={tab}
         onChange={setTab}

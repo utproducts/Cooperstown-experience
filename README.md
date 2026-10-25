@@ -11,9 +11,11 @@ A family and tournament-director app for a 12U youth baseball week in Cooperstow
 - **Alerts.** Announcements, weather, delays and time changes, and final scores, sent as push notifications.
 - **Meetings and sessions.** Book orientation, team photo, coaches meeting, director office hours and Hall of Fame visit slots. Capacity is enforced.
 - **Photos.** Order team photos, memory mates, trading cards and action bundles (Stripe checkout).
+- **Their week, always visible.** The week name and dates show on Home, Player and Schedule. Families with teams in more than one week (e.g. siblings) can switch between them.
 - **Week guide.** Day-by-day itinerary (arrival and check-in, Opening Ceremonies, pool play, bracket, championship, departure), FAQ, and places around town.
 
 ### For directors
+- **Week selection.** The season is a set of weeks (e.g. 16–17 weeks). The bar at the top of every director screen shows which week you're working on. Tap it to switch. Check-in, imports, the schedule builder, scores, alerts and exports all apply to that week. The default is the week happening today, otherwise the next one. Under **More → Weeks** you can create the whole season in one step (first arrival day, number of weeks, days per week) and edit each week's dates and venue.
 - **Import registrations from LeagueApps.** Upload the registrations CSV export. Columns are detected automatically. The import creates teams, a unique **team follow code** per team, a **check-in QR token** per player, and an invite per parent or coach email, and it can email them right away. Re-imports are safe because existing teams and players are matched.
 - **Check-in.** Scan player QR codes with the camera (phone, tablet or laptop webcam), or search and check in by hand. Progress is shown per team.
 - **Schedule builder.** Split teams into pools automatically (balanced snake order), generate round-robin pool play into your days, times and fields (no double-booking, a minimum rest gap, a cap on games per day), then seed a single-elimination bracket from standings. Top seeds get byes automatically.
@@ -105,7 +107,10 @@ Export registrations from LeagueApps as CSV. The importer recognizes common colu
 | Parent email | `Parent 1 Email`, `Parent Email`, `Guardian Email` (falls back to `Email`) |
 | Parent name and phone | `Parent 1 First Name`/`Last Name`, `Parent 1 Phone` |
 | Role | `Role` (rows containing *coach*, *manager* or *staff* become the team's coach) |
+| Week routing | `Program` / `Session` / `Season` and `Program Start Date` / `Start Date` |
 | Optional | `Jersey Number`, `Birth Date`, `Team ID`, `Member ID`, `Registration Status` (cancelled, withdrawn and waitlisted rows are skipped) |
+
+**Which week registrations go to.** Rows are grouped by program/session. Each group is matched to a week by its start date (the date that falls inside the week), then by a week number in the program name ("Cooperstown Week 7 - 12U"), then by an exact week name. The director confirms or changes each match on the preview, and the import won't run until every group has a week. Without program columns, everything goes into the selected week. The same club registered for two different weeks becomes two separate teams. Invite emails state the week and dates.
 
 Directors can download a template from the import screen.
 

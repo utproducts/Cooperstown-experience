@@ -4,14 +4,16 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, View } from 'react-native';
 
-import { Badge, Body, Button, Caption, Card, Divider, ErrorNote, Field, H1, H2, H3, Icon, Row, Screen, Stack } from '@/components/ui';
+import { Badge, Body, Button, Caption, Card, Divider, ErrorNote, Field, H1, H2, H3, Icon, Row, Screen, Segmented, Stack } from '@/components/ui';
+import { WeekChip } from '@/components/week-picker';
 import { C, S } from '@/constants/theme';
-import { useAuth } from '@/data';
+import { useAuth, useCurrentEvent, useTable } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { importRegistrations, type ImportSummary } from '@/data/services';
 import { toCsv } from '@/lib/csv';
 import { parseRegistrations, type RegistrationField } from '@/lib/registrations';
 import { shareTextFile } from '@/lib/share-file';
+import { matchWeek, weekRange } from '@/lib/weeks';
 
 const FIELD_LABELS: Partial<Record<RegistrationField, string>> = {
   team: 'Team',
@@ -28,9 +30,11 @@ const FIELD_LABELS: Partial<Record<RegistrationField, string>> = {
   guardianPhone: 'Parent phone',
   email: 'Email',
   status: 'Status',
+  program: 'Program / week',
+  programStart: 'Program start date',
 };
 
-const TEMPLATE_HEADERS = ['Registration Status', 'First Name', 'Last Name', 'Birth Date', 'Team', 'Role', 'Jersey Number', 'Parent 1 First Name', 'Parent 1 Last Name', 'Parent 1 Email', 'Parent 1 Phone', 'Email'];
+const TEMPLATE_HEADERS = ['Program', 'Program Start Date', 'Registration Status', 'First Name', 'Last Name', 'Birth Date', 'Team', 'Role', 'Jersey Number', 'Parent 1 First Name', 'Parent 1 Last Name', 'Parent 1 Email', 'Parent 1 Phone', 'Email'];
 
 async function readPickedFile(asset: DocumentPicker.DocumentPickerAsset): Promise<string> {
   if (Platform.OS === 'web' && asset.file) return asset.file.text();
@@ -47,9 +51,31 @@ export default function ImportScreen() {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
   const [showPaste, setShowPaste] = useState(false);
+  const week = useCurrentEvent();
+  const allTeams = useTable('teams');
+  // Manual week choices per program group (overrides the automatic match).
+  const [weekFor, setWeekFor] = useState<Record<string, string>>({});
 
   const parsed = useMemo(() => (csv.trim() ? parseRegistrations(csv) : null), [csv]);
   const playerCount = parsed?.teams.reduce((s, t) => s + t.players.length, 0) ?? 0;
+
+  // Group teams by the program/session they registered for, and decide which week each group goes to.
+  const groups = useMemo(() => {
+    const map = new Map<string, { key: string; program: string | null; startDate: string | null; teams: NonNullable<typeof parsed>['teams'] }>();
+    for (const t of parsed?.teams ?? []) {
+      const key = `${t.program ?? ''}|${t.programStartDate ?? ''}`;
+      if (!map.has(key)) map.set(key, { key, program: t.program, startDate: t.programStartDate, teams: [] });
+      map.get(key)!.teams.push(t);
+    }
+    return [...map.values()];
+  }, [parsed]);
+  const hasProgramInfo = groups.some((g) => g.program || g.startDate);
+  const assigned = groups.map((g) => {
+    const auto = hasProgramInfo ? matchWeek(week.events, { program: g.program, startDate: g.startDate }) : week.data;
+    const eventId = weekFor[g.key] ?? auto?.id ?? null;
+    return { ...g, auto, eventId, event: week.events.find((e) => e.id === eventId) ?? null };
+  });
+  const unassigned = assigned.filter((g) => !g.eventId).length;
   const outbox = backend.outbox?.() ?? [];
 
   async function pick() {
@@ -67,12 +93,17 @@ export default function ImportScreen() {
   }
 
   async function runImport() {
-    if (!parsed || !d.event) return;
+    if (!parsed || unassigned > 0) return;
     setBusy(true);
     setError(null);
     try {
-      const s = await importRegistrations(backend, d.event.id, parsed.teams, { sendInvites });
-      setSummary(s);
+      const total: ImportSummary = { teamsCreated: 0, teamsUpdated: 0, playersCreated: 0, invitesCreated: 0, invitesSent: 0 };
+      for (const g of assigned) {
+        const s = await importRegistrations(backend, g.eventId!, g.teams, { sendInvites });
+        (Object.keys(total) as (keyof ImportSummary)[]).forEach((k) => (total[k] += s[k]));
+      }
+      setSummary(total);
+      setWeekFor({});
       setCsv('');
       setFileName(null);
     } catch (e) {
@@ -88,6 +119,19 @@ export default function ImportScreen() {
         <H1>Import registrations</H1>
         <Button title="Teams" variant="ghost" small onPress={() => router.push('/director/teams')} />
       </Row>
+      {week.data && !parsed && (
+        <Card style={{ backgroundColor: C.navy, borderColor: C.navy, flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+          <Icon name="calendar" color={C.gold} />
+          <View style={{ flex: 1 }}>
+            <Caption style={{ color: C.gold, fontWeight: '800' }}>IMPORTING INTO</Caption>
+            <Body style={{ color: C.white, fontWeight: '700' }}>
+              {week.data.name} · {weekRange(week.data)}
+            </Body>
+            <Caption style={{ color: '#C9D4E5' }}>If the export has a Program or Start Date column, each group is matched to its own week instead.</Caption>
+          </View>
+          <WeekChip />
+        </Card>
+      )}
 
       <Card>
         <H2 style={{ fontSize: 18 }}>From LeagueApps</H2>
@@ -107,8 +151,8 @@ export default function ImportScreen() {
               shareTextFile(
                 'registration-template.csv',
                 toCsv(TEMPLATE_HEADERS, [
-                  ['Active', 'Mason', 'Reed', '03/14/2014', 'Gulf Coast Storm (Tampa, FL)', 'Player', '7', 'Jamie', 'Reed', 'jamie@example.com', '555-0101', ''],
-                  ['Active', 'Mike', 'Hart', '', 'Gulf Coast Storm (Tampa, FL)', 'Head Coach', '', '', '', '', '', 'coach@example.com'],
+                  ['Cooperstown Week 1 - 12U', '05/29/2027', 'Active', 'Mason', 'Reed', '03/14/2014', 'Gulf Coast Storm (Tampa, FL)', 'Player', '7', 'Jamie', 'Reed', 'jamie@example.com', '555-0101', ''],
+                  ['Cooperstown Week 1 - 12U', '05/29/2027', 'Active', 'Mike', 'Hart', '', 'Gulf Coast Storm (Tampa, FL)', 'Head Coach', '', '', '', '', '', 'coach@example.com'],
                 ]),
               )
             }
@@ -149,8 +193,42 @@ export default function ImportScreen() {
             </View>
           )}
           <Divider />
+          <H3>Which week?</H3>
+          {assigned.map((g) => (
+            <View key={g.key} style={{ gap: 6, padding: S.md, borderRadius: 10, backgroundColor: g.eventId ? C.cream : C.warnSoft }}>
+              <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1 }}>
+                  <Body style={{ fontWeight: '700' }}>{g.program ?? (hasProgramInfo ? 'No program listed' : 'All rows')}</Body>
+                  <Caption>
+                    {g.startDate ? `Starts ${g.startDate} · ` : ''}
+                    {g.teams.length} teams · {g.teams.reduce((n, t) => n + t.players.length, 0)} players
+                  </Caption>
+                </View>
+                {g.event ? (
+                  <Badge label={weekFor[g.key] ? 'Chosen' : hasProgramInfo ? 'Auto-matched' : 'Selected week'} tone="green" icon="checkmark" />
+                ) : (
+                  <Badge label="Pick a week" tone="warn" icon="alert-circle" />
+                )}
+              </Row>
+              {g.event && (
+                <Body style={{ fontWeight: '700', color: C.navy }}>
+                  → {g.event.name} · {weekRange(g.event)}
+                </Body>
+              )}
+              <Segmented
+                value={g.eventId ?? ''}
+                onChange={(id) => setWeekFor((m) => ({ ...m, [g.key]: id }))}
+                options={week.events.map((e) => ({ value: e.id, label: e.name }))}
+              />
+            </View>
+          ))}
+          {week.events.length === 0 && <Caption style={{ color: C.red }}>Create the season’s weeks first (More → Weeks).</Caption>}
+          <Divider />
           {parsed.teams.slice(0, 30).map((t) => {
-            const existing = d.teams.find((x) => x.name.toLowerCase() === t.name.toLowerCase() || (t.externalId && x.externalId === t.externalId));
+            const g = assigned.find((x) => x.key === `${t.program ?? ''}|${t.programStartDate ?? ''}`);
+            const existing = allTeams.data.find(
+              (x) => x.eventId === g?.eventId && (x.name.toLowerCase() === t.name.toLowerCase() || (t.externalId && x.externalId === t.externalId)),
+            );
             return (
               <Row key={t.key} style={{ justifyContent: 'space-between' }}>
                 <View style={{ flex: 1 }}>
@@ -172,10 +250,14 @@ export default function ImportScreen() {
             <Button title={sendInvites ? 'Yes' : 'No'} small variant={sendInvites ? 'dark' : 'secondary'} onPress={() => setSendInvites(!sendInvites)} />
           </Row>
           <Button
-            title={`Import ${parsed.teams.length} teams & ${playerCount} players`}
+            title={
+              unassigned > 0
+                ? `Pick a week for ${unassigned} group${unassigned === 1 ? '' : 's'}`
+                : `Import ${parsed.teams.length} teams & ${playerCount} players${assigned.length === 1 && assigned[0].event ? ` into ${assigned[0].event.name}` : ''}`
+            }
             icon="cloud-upload"
             loading={busy}
-            disabled={!parsed.teams.length || !d.event}
+            disabled={!parsed.teams.length || unassigned > 0}
             onPress={runImport}
           />
         </Card>
@@ -209,14 +291,14 @@ export default function ImportScreen() {
               <Caption>To: {m.to}</Caption>
               <Body style={{ fontWeight: '700' }}>You’re invited to follow {m.teamName}</Body>
               <Caption>
-                Team code {m.code} · {m.link}
+                {m.week} · Team code {m.code} · {m.link}
               </Caption>
             </View>
           ))}
           {outbox.length > 5 && <Caption>…and {outbox.length - 5} more</Caption>}
         </Card>
       )}
-      {!d.event && <Body style={{ color: C.red }}>Create an event first (More → Event settings).</Body>}
+      {week.events.length === 0 && <Body style={{ color: C.red }}>Create the season’s weeks first (More → Weeks).</Body>}
       {Platform.OS !== 'web' && <Caption>Tip: imports are easiest on a laptop at the web version of this app.</Caption>}
       {summary === null && !parsed && d.teams.length > 0 && (
         <Caption>Re-importing is safe: existing teams are matched by LeagueApps team id or name, and players already on a roster are skipped.</Caption>

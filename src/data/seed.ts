@@ -1,4 +1,5 @@
 import { buildPoolMatchups, placeMatchups } from '../lib/schedule';
+import { generateSeasonWeeks } from '../lib/weeks';
 import { addMinutes, DEFAULT_TZ, zonedToIso, localDateKey } from '../lib/time';
 import type { Tables } from './backend';
 import type { Game, Player, Team } from './types';
@@ -63,7 +64,7 @@ export function buildSeed(now = new Date()): SeedTables {
   const eventId = 'evt-demo';
   const event = {
     id: eventId,
-    name: '12U Championship Week',
+    name: 'Week 4',
     startsOn: arrival,
     endsOn: addDays(arrival, 6),
     venue: 'Cooperstown Baseball Complex',
@@ -157,7 +158,10 @@ export function buildSeed(now = new Date()): SeedTables {
   const at = (dayOffset: number, time: string) => zonedToIso(addDays(arrival, dayOffset), time);
 
   return {
-    events: [event],
+    // The demo week (with all the data) sits in the middle of a 7-week season.
+    events: generateSeasonWeeks(addDays(arrival, -21), 7).map((w, i) =>
+      i === 3 ? event : { ...event, ...w, id: `evt-week-${i + 1}` },
+    ),
     teams,
     players,
     games,

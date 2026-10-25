@@ -6,7 +6,11 @@ function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
-function emailHtml(p: { name: string | null; teamName: string; eventName: string; code: string; link: string }) {
+function fmt(date: string) {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function emailHtml(p: { name: string | null; teamName: string; eventName: string; dates: string; code: string; link: string }) {
   const hi = p.name ? `Hi ${escapeHtml(p.name.split(' ')[0])},` : 'Hi there,';
   return `<!doctype html><html><body style="margin:0;background:#F7F2E8;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1B1F2A">
   <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px">
@@ -17,6 +21,7 @@ function emailHtml(p: { name: string | null; teamName: string; eventName: string
     </td></tr>
     <tr><td style="padding:28px 32px;font-size:16px;line-height:24px">
       <p>${hi}</p>
+      <p style="background:#FBF3D9;border-radius:10px;padding:12px 16px;margin:0 0 16px"><b>Your week:</b> ${escapeHtml(p.eventName)} · ${escapeHtml(p.dates)}</p>
       <p>Follow <b>${escapeHtml(p.teamName)}</b> in the Cooperstown Experience app to get the game schedule, live scores, delay and weather alerts, and your player's check-in QR code.</p>
       <p style="text-align:center;margin:28px 0">
         <span style="display:inline-block;font-family:Menlo,monospace;font-size:30px;font-weight:800;letter-spacing:3px;color:#0E2340;border:3px dashed #C8102E;border-radius:12px;padding:12px 20px">${escapeHtml(p.code)}</span>
@@ -42,7 +47,7 @@ Deno.serve(async (req) => {
 
   const { data: invites, error } = await db
     .from('invites')
-    .select('id, email, name, team:teams(id, name, event:events(name), team_codes(code))')
+    .select('id, email, name, team:teams(id, name, event:events(name, starts_on, ends_on), team_codes(code))')
     .in('id', inviteIds.slice(0, 1000));
   if (error) return json({ error: error.message }, 500);
 
@@ -57,15 +62,17 @@ Deno.serve(async (req) => {
       continue;
     }
     const link = `${appUrl}/follow/${code}`;
+    const eventName = team.event?.name ?? 'Cooperstown';
+    const dates = team.event ? `${fmt(team.event.starts_on)} – ${fmt(team.event.ends_on)}` : '';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from,
         to: inv.email,
-        subject: `Follow ${team.name} — your team code is ${code}`,
-        html: emailHtml({ name: inv.name, teamName: team.name, eventName: team.event?.name ?? 'Cooperstown', code, link }),
-        text: `Follow ${team.name} in the Cooperstown Experience app with team code ${code}: ${link}`,
+        subject: `${eventName} (${dates}): follow ${team.name} with code ${code}`,
+        html: emailHtml({ name: inv.name, teamName: team.name, eventName, dates, code, link }),
+        text: `${eventName}, ${dates}. Follow ${team.name} in the Cooperstown Experience app with team code ${code}: ${link}`,
       }),
     });
     if (res.ok) {

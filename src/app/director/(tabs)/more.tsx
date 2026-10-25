@@ -27,7 +27,7 @@ export default function DirectorMore() {
         {backend.mode === 'demo' && <Badge label="Demo mode — data is stored on this device" tone="gold" />}
       </Card>
       <Card style={{ gap: 0 }}>
-        <ListItem icon="settings" title="Event settings" subtitle="Name, dates, venue, check-in window" onPress={() => router.push('/director/event')} />
+        <ListItem icon="calendar" title="Weeks" subtitle="Switch weeks, create the season, edit dates and venue" onPress={() => router.push('/director/event')} />
         <Divider />
         <ListItem icon="people" title="Meetings & sessions" subtitle="Create slots and see who booked" onPress={() => router.push('/director/meetings')} />
         <Divider />

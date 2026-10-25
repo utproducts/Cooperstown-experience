@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { normalizeTeamCode, randomToken } from '../lib/codes';
 import type { Backend, InviteEmail, Query, TableName, Tables } from './backend';
 import { buildSeed, DEMO_USERS, type SeedTables } from './seed';
+import { weekRange } from '../lib/weeks';
 import type { Profile, Role } from './types';
 
 const STORAGE_KEY = 'cxp-demo-v1';
@@ -212,7 +213,8 @@ export function createDemoBackend(appUrl: string): Backend {
       for (const inv of db.invites.filter((i) => inviteIds.includes(i.id))) {
         const team = db.teams.find((t) => t.id === inv.teamId);
         if (!team?.code) continue;
-        outbox.unshift({ to: inv.email, name: inv.name, teamName: team.name, code: team.code, link: `${appUrl}/follow/${team.code}` });
+        const ev = db.events.find((e) => e.id === team.eventId);
+        outbox.unshift({ to: inv.email, name: inv.name, teamName: team.name, week: ev ? `${ev.name} · ${weekRange(ev)}` : '', code: team.code, link: `${appUrl}/follow/${team.code}` });
         inv.sentAt = new Date().toISOString();
         sent++;
       }

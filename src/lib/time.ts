@@ -99,3 +99,17 @@ export function relativeTime(iso: string, now = Date.now()): string {
   if (diff < 60 * 24) return `${Math.floor(diff / 60)}h ago`;
   return `${Math.floor(diff / 1440)}d ago`;
 }
+
+/** Converts "3/14/2014", "2014-03-14" or "03-14-14" to an ISO date, or null. */
+export function normalizeIsoDate(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  m = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s|$)/);
+  if (m) {
+    const year = m[3].length === 2 ? `20${m[3]}` : m[3];
+    return `${year}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  }
+  return null;
+}

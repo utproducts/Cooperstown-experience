@@ -1,4 +1,5 @@
 import { parseCsvObjects } from './csv';
+import { normalizeIsoDate } from './time';
 
 /**
  * Converts a registration export (LeagueApps "Registrations" / "Members"
@@ -28,7 +29,9 @@ export type RegistrationField =
   | 'city'
   | 'state'
   | 'memberId'
-  | 'status';
+  | 'status'
+  | 'program'
+  | 'programStart';
 
 const ALIASES: Record<RegistrationField, string[]> = {
   firstName: ['first name', 'player first name', 'participant first name', 'member first name', 'athlete first name', 'first'],
@@ -50,6 +53,8 @@ const ALIASES: Record<RegistrationField, string[]> = {
   state: ['state', 'team state', 'state/province', 'province'],
   memberId: ['member id', 'user id', 'leagueapps user id', 'player id', 'registration id', 'participant id'],
   status: ['registration status', 'status', 'payment status'],
+  program: ['program', 'program name', 'session', 'session name', 'season', 'season name', 'event', 'event name', 'tournament week', 'week'],
+  programStart: ['program start date', 'session start date', 'season start date', 'event start date', 'start date', 'week start date', 'arrival date'],
 };
 
 export function normalizeHeader(h: string): string {
@@ -70,7 +75,7 @@ export function detectColumns(headers: string[]): ColumnMapping {
   // Specific fields first so e.g. "Parent 1 Email" isn't claimed as "Email".
   const order: RegistrationField[] = [
     'guardianFirst', 'guardianLast', 'guardianName', 'guardianEmail', 'guardianPhone',
-    'teamId', 'team', 'firstName', 'lastName', 'fullName', 'role', 'jersey', 'birthDate',
+    'programStart', 'program', 'teamId', 'team', 'firstName', 'lastName', 'fullName', 'role', 'jersey', 'birthDate',
     'email', 'phone', 'city', 'state', 'memberId', 'status',
   ];
   for (const field of order) {
@@ -99,6 +104,9 @@ export interface ImportedPlayer {
 
 export interface ImportedTeam {
   key: string;
+  /** Program / session from the export (e.g. "Week 7 - 12U"), used to pick the tournament week. */
+  program: string | null;
+  programStartDate: string | null;
   name: string;
   city: string;
   state: string;
@@ -135,18 +143,8 @@ function cleanEmail(v: string | undefined): string | null {
   return t && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t) ? t : null;
 }
 
-/** Converts "3/14/2014", "2014-03-14" or "03-14-2014" to ISO date. */
 export function normalizeDate(v: string | undefined): string | null {
-  const t = nullIfEmpty(v);
-  if (!t) return null;
-  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-  m = t.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-  if (m) {
-    const year = m[3].length === 2 ? `20${m[3]}` : m[3];
-    return `${year}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
-  }
-  return null;
+  return normalizeIsoDate(nullIfEmpty(v) ?? '');
 }
 
 function splitName(full: string): [string, string] {
@@ -191,12 +189,17 @@ export function parseRegistrations(csv: string, override?: ColumnMapping): Impor
       skipped++;
       return;
     }
-    const key = (teamExt ?? teamName!).toLowerCase();
+    const program = nullIfEmpty(get(rec, 'program'));
+    const programStartDate = normalizeDate(get(rec, 'programStart'));
+    // The same club can come to Cooperstown in two different weeks; keep those apart.
+    const key = `${program ?? ''}|${programStartDate ?? ''}|${(teamExt ?? teamName!).toLowerCase()}`;
     let team = teams.get(key);
     if (!team) {
       const fromName = cityStateFromTeamName(teamName ?? '');
       team = {
         key,
+        program,
+        programStartDate,
         name: (teamName ?? `Team ${teamExt}`).replace(/\s*\([^)]*\)\s*$/, '').trim(),
         city: nullIfEmpty(get(rec, 'city')) ?? fromName.city,
         state: (nullIfEmpty(get(rec, 'state')) ?? fromName.state).toUpperCase(),

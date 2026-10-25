@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+
+import { DEFAULT_TZ, localDateKey } from '../lib/time';
+import { pickDefaultEvent } from '../lib/weeks';
 
 import type { Backend, Query, TableName, Tables } from './backend';
 import { createDemoBackend } from './demo';
@@ -20,7 +24,12 @@ interface Ctx {
   backend: Backend;
   profile: Profile | null;
   ready: boolean;
+  /** Week the user picked, or null to follow the default (current/next week). */
+  selectedEventId: string | null;
+  selectEvent: (id: string | null) => void;
 }
+
+const selectionKey = (userId: string) => `cxp-selected-event:${userId}`;
 
 const BackendContext = createContext<Ctx | null>(null);
 
@@ -28,6 +37,29 @@ export function BackendProvider({ children }: { children: ReactNode }) {
   const [backend] = useState(makeBackend);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ready, setReady] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  // Restore the user's last picked week on this device.
+  useEffect(() => {
+    if (!profile) return;
+    let alive = true;
+    AsyncStorage.getItem(selectionKey(profile.id))
+      .then((id) => alive && setSelectedEventId(id))
+      .catch(() => {});
+    return () => {
+      alive = false;
+      setSelectedEventId(null);
+    };
+  }, [profile]);
+
+  const selectEvent = useCallback(
+    (id: string | null) => {
+      setSelectedEventId(id);
+      if (!profile) return;
+      (id ? AsyncStorage.setItem(selectionKey(profile.id), id) : AsyncStorage.removeItem(selectionKey(profile.id))).catch(() => {});
+    },
+    [profile],
+  );
 
   useEffect(() => {
     const off = backend.onAuthChange(setProfile);
@@ -38,7 +70,10 @@ export function BackendProvider({ children }: { children: ReactNode }) {
     return off;
   }, [backend]);
 
-  const value = useMemo(() => ({ backend, profile, ready }), [backend, profile, ready]);
+  const value = useMemo(
+    () => ({ backend, profile, ready, selectedEventId, selectEvent }),
+    [backend, profile, ready, selectedEventId, selectEvent],
+  );
   return <BackendContext.Provider value={value}>{children}</BackendContext.Provider>;
 }
 
@@ -131,23 +166,54 @@ export function useMyPlayers() {
   return useLiveQuery(`my-players:${profile?.id}`, ['players'], (b) => (profile ? b.myPlayers() : Promise.resolve([])), []);
 }
 
+export interface WeekState extends Live<EventWeek | null> {
+  /** Weeks this user can switch between, oldest first. */
+  events: EventWeek[];
+  /** True when the user picked this week rather than getting the default. */
+  pinned: boolean;
+  select: (id: string | null) => void;
+}
+
 /**
- * The event being viewed. Directors see the most recent event; families see
- * the event of the first team they follow.
+ * The tournament week being viewed. Directors can pick any week; families can
+ * pick among the weeks of teams they follow or have a player on. Without a
+ * pick, the week happening today (or the next upcoming one) is used.
  */
-export function useCurrentEvent(): Live<EventWeek | null> {
-  const { profile } = useAuth();
+export function useCurrentEvent(): WeekState {
+  const ctx = useContext(BackendContext);
+  if (!ctx) throw new Error('useCurrentEvent must be used inside BackendProvider');
+  const { profile, selectedEventId, selectEvent } = ctx;
   const follows = useMyFollows();
-  const followKey = follows.data.join(',');
-  return useLiveQuery(
-    `event:${profile?.role}:${followKey}`,
-    ['events', 'follows'],
+  const myPlayers = useMyPlayers();
+  const teamIds = [...new Set([...follows.data, ...myPlayers.data.map((p) => p.teamId)])].sort();
+  const isDirector = profile?.role === 'director';
+  const events = useLiveQuery(
+    `events:${profile?.role}:${teamIds.join(',')}`,
+    ['events', 'follows', 'teams'],
     async (b) => {
-      const events = await b.select('events', { order: { column: 'startsOn', ascending: false } });
-      if (profile?.role === 'director' || follows.data.length === 0) return events[0] ?? null;
-      const teams = await b.select('teams', { in: { column: 'id', values: follows.data } });
-      return events.find((e) => e.id === teams[0]?.eventId) ?? events[0] ?? null;
+      const all = await b.select('events', { order: { column: 'startsOn' } });
+      if (isDirector) return all;
+      if (teamIds.length === 0) return [];
+      const teams = await b.select('teams', { in: { column: 'id', values: teamIds } });
+      const ids = new Set(teams.map((t) => t.eventId));
+      return all.filter((e) => ids.has(e.id));
     },
-    null,
+    [] as EventWeek[],
   );
+  const today = localDateKey(new Date().toISOString(), DEFAULT_TZ);
+  const picked = events.data.find((e) => e.id === selectedEventId) ?? null;
+  const data = picked ?? pickDefaultEvent(events.data, today);
+  return {
+    data,
+    events: events.data,
+    pinned: !!picked,
+    select: selectEvent,
+    loading: events.loading || follows.loading,
+    error: events.error,
+    refresh: () => {
+      events.refresh();
+      follows.refresh();
+      myPlayers.refresh();
+    },
+  };
 }

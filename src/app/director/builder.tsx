@@ -77,7 +77,7 @@ export default function Builder() {
     return (
       <Screen>
         <H1>Schedule builder</H1>
-        <Body>Create an event first under More → Event settings.</Body>
+        <Body>Create the season’s weeks first under More → Weeks.</Body>
       </Screen>
     );
   }

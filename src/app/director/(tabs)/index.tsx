@@ -40,7 +40,7 @@ export default function DirectorDashboard() {
       <Hero
         eyebrow="Director"
         title={event?.name ?? 'No event yet'}
-        subtitle={event ? `${formatDay(event.startsOn)} – ${formatDay(event.endsOn)}${dayIdx >= 0 ? ` · Day ${dayIdx + 1}` : ''} · ${event.venue}` : 'Create an event under More → Event settings'}
+        subtitle={event ? `${formatDay(event.startsOn)} – ${formatDay(event.endsOn)}${dayIdx >= 0 ? ` · Day ${dayIdx + 1}` : ''} · ${event.venue}` : 'Create the season’s weeks under More → Weeks'}
       />
 
       <View style={styles.actions}>

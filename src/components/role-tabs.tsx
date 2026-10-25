@@ -7,6 +7,7 @@ import { useAuth } from '@/data';
 import type { Role } from '@/data/types';
 
 import { Icon, type IconName } from './ui';
+import { WeekBar, WeekChip } from './week-picker';
 
 export interface TabDef {
   name: string;
@@ -15,13 +16,14 @@ export interface TabDef {
 }
 
 /** Bottom tabs on phones, a left sidebar on wide screens (web/tablet). */
-export function RoleTabs({ tabs }: { tabs: TabDef[] }) {
+export function RoleTabs({ tabs, weekBar }: { tabs: TabDef[]; weekBar?: boolean }) {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: !!weekBar,
+        header: weekBar ? () => <WeekBar /> : undefined,
         tabBarActiveTintColor: wide ? C.white : C.red,
         tabBarInactiveTintColor: wide ? '#9FB0C8' : C.muted,
         tabBarActiveBackgroundColor: wide ? C.navySoft : undefined,
@@ -64,6 +66,7 @@ export function RoleStack({ allow, home }: { allow: Role[]; home: '/fan' | '/dir
         headerStyle: { backgroundColor: C.cream },
         headerTintColor: C.navy,
         contentStyle: { backgroundColor: C.cream },
+        headerRight: home === '/director' ? () => <WeekChip /> : undefined,
         headerLeft: () => (
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace(home))}

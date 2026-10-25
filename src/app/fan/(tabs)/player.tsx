@@ -9,6 +9,7 @@ import { Badge, Body, Button, Caption, Card, Empty, Eyebrow, H1, H2, H3, Icon, L
 import { CHECKLIST } from '@/content/guide';
 import { C, Fonts, R, S } from '@/constants/theme';
 import { useTable } from '@/data';
+import { FamilyWeekLabel } from '@/components/week-picker';
 import { useFanData } from '@/data/fan';
 import { checkInPayload } from '@/lib/codes';
 import { formatDateTime, formatDay } from '@/lib/time';
@@ -61,6 +62,7 @@ export default function PlayerPortal() {
   return (
     <Screen>
       <H1>Player portal</H1>
+      <FamilyWeekLabel />
       {d.myPlayers.length > 1 && (
         <Segmented value={player.id} onChange={setSelected} options={d.myPlayers.map((p) => ({ value: p.id, label: p.firstName }))} />
       )}

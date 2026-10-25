@@ -5,6 +5,7 @@ import { GameCard } from '@/components/game-card';
 import { NotificationItem } from '@/components/notification-item';
 import { Badge, Body, Button, Caption, Card, Eyebrow, H3, Hero, Icon, Row, Screen, Section, type IconName } from '@/components/ui';
 import { WeatherCard } from '@/components/weather-card';
+import { FamilyWeekLabel } from '@/components/week-picker';
 import { ITINERARY } from '@/content/guide';
 import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
@@ -45,7 +46,8 @@ export default function FanHome() {
 
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
-      <Hero eyebrow={event?.name ?? 'Cooperstown'} title={firstName ? `Welcome, ${firstName}` : 'Welcome'} subtitle={status}>
+      <Hero eyebrow="Cooperstown" title={firstName ? `Welcome, ${firstName}` : 'Welcome'} subtitle={status}>
+        <FamilyWeekLabel light />
         {d.myTeams.length > 0 && (
           <Row style={{ flexWrap: 'wrap', marginTop: S.sm }}>
             {d.myTeams.map((t) => (

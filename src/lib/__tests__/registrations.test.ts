@@ -61,3 +61,21 @@ describe('registrations import', () => {
     expect(normalizeDate('July 4')).toBeNull();
   });
 });
+
+describe('program / week detection', () => {
+  const csv = [
+    'Program,Program Start Date,First Name,Last Name,Team,Parent Email',
+    'Cooperstown Week 3 - 12U,06/20/2027,Ava,Stone,Hawks,a@x.io',
+    'Cooperstown Week 3 - 12U,06/20/2027,Ben,Lowe,Hawks,b@x.io',
+    'Cooperstown Week 9 - 12U,08/01/2027,Cal,Ruiz,Hawks,c@x.io',
+  ].join('\n');
+
+  it('keeps the same team in different programs separate and reads the start date', () => {
+    const r = parseRegistrations(csv);
+    expect(r.teams).toHaveLength(2);
+    expect(r.teams.map((t) => [t.program, t.programStartDate, t.players.length])).toEqual([
+      ['Cooperstown Week 3 - 12U', '2027-06-20', 2],
+      ['Cooperstown Week 9 - 12U', '2027-08-01', 1],
+    ]);
+  });
+});

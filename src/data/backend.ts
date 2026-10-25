@@ -46,6 +46,8 @@ export interface InviteEmail {
   to: string;
   name: string | null;
   teamName: string;
+  /** e.g. "Week 4 · Oct 24 – Oct 30" */
+  week: string;
   code: string;
   link: string;
 }
