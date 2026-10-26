@@ -1,0 +1,15 @@
+{
+  "name": "All Star Village (demo)",
+  "short_name": "ASV Demo",
+  "start_url": "/Cooperstown-experience/demo/",
+  "scope": "/Cooperstown-experience/demo/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0E2340",
+  "icons": [
+    { "src": "/Cooperstown-experience/demo/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/Cooperstown-experience/demo/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/Cooperstown-experience/demo/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
