@@ -75,7 +75,7 @@ function Fact({ icon, label, value }: { icon: 'calendar' | 'time' | 'location'; 
 
 const styles = StyleSheet.create({
   facts: { flexDirection: 'row', gap: S.sm, flexWrap: 'wrap' },
-  fact: { flexGrow: 1, flexBasis: '30%', backgroundColor: C.white, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.md, gap: 2 },
+  fact: { flexGrow: 1, flexBasis: '30%', backgroundColor: C.card, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.md, gap: 2 },
   factLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.muted, textTransform: 'uppercase' },
   factValue: { fontFamily: Fonts.display, fontSize: 18, fontWeight: '700', color: C.navy },
   cardTitle: { fontFamily: Fonts.display, fontSize: 20, fontWeight: '700', color: C.navy },

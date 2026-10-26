@@ -45,7 +45,7 @@ export default function Restaurants() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: C.white, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+  card: { backgroundColor: C.card, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
   image: { width: '100%', height: 140 },
   body: { padding: S.lg, gap: 6 },
   name: { fontFamily: Fonts.display, fontSize: 22, fontWeight: '700', color: C.navy },

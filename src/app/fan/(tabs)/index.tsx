@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   quick: {
     flexGrow: 1,
     flexBasis: '30%',
-    backgroundColor: C.white,
+    backgroundColor: C.card,
     borderRadius: R.md,
     borderWidth: 1,
     borderColor: C.border,

@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
   listTitle: { fontSize: 16, fontWeight: '600', color: C.ink },
   empty: { alignItems: 'center', justifyContent: 'center', gap: S.sm, padding: S.xl },
   segmented: { gap: S.sm, paddingVertical: 2 },
-  segment: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.pill, backgroundColor: C.white, borderWidth: 1, borderColor: C.border },
+  segment: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.pill, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
   segmentActive: { backgroundColor: C.navy, borderColor: C.navy },
   segmentText: { fontSize: 14, fontWeight: '700', color: C.navy },
   stat: { flex: 1, minWidth: 90, gap: 2 },

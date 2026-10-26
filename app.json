@@ -32,7 +32,7 @@
       "name": "Cooperstown All Star Village",
       "shortName": "All Star Village",
       "themeColor": "#0E2340",
-      "backgroundColor": "#F7F2E8"
+      "backgroundColor": "#FFFFFF"
     },
     "plugins": [
       "expo-router",

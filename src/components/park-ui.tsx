@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: '46%',
     minHeight: 118,
-    backgroundColor: C.white,
+    backgroundColor: C.card,
     borderRadius: R.lg,
     borderWidth: 1,
     borderColor: C.border,

@@ -1,22 +1,22 @@
 import { Platform } from 'react-native';
 
-/** Classic ballpark palette: navy, stitch red, cream, with a field green accent. */
+/** Classic ballpark palette: navy and stitch red on white, light grey boxes, with a field green accent. */
 export const C = {
   navy: '#0E2340',
   navyDeep: '#081629',
   navySoft: '#1D3A63',
   red: '#C8102E',
   redSoft: '#FBE7EA',
-  cream: '#F7F2E8',
-  creamDeep: '#EFE6D3',
+  cream: '#FFFFFF',
+  creamDeep: '#E9ECF0',
   gold: '#C9A227',
   goldSoft: '#FBF3D9',
   green: '#2F6B3A',
   greenSoft: '#E3F1E5',
   ink: '#1B1F2A',
   muted: '#667085',
-  border: '#E4DCCB',
-  card: '#FFFFFF',
+  border: '#E3E6EA',
+  card: '#F3F4F6',
   white: '#FFFFFF',
   warn: '#B54708',
   warnSoft: '#FEF0C7',

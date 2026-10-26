@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 
 import { PlaceCard } from '@/components/park-ui';
 import { SiteMap } from '@/components/site-map';
@@ -22,6 +23,7 @@ export default function ParkMap() {
   const places = usePlaces();
   const { value: map } = useSiteMap();
   const [kind, setKind] = useState<PlaceKind | 'all'>(params.kind ?? 'all');
+  const { height } = useWindowDimensions();
   const [selected, setSelected] = useState<string | null>(params.place ?? null);
 
   const pinned = places.data.filter((p) => p.active && onMap(p));
@@ -39,7 +41,7 @@ export default function ParkMap() {
         onChange={(k) => (setKind(k), setSelected(null))}
         options={[{ value: 'all' as const, label: 'Everything' }, ...kinds.map((k) => ({ value: k, label: PLACE_KINDS[k].plural }))]}
       />
-      <SiteMap map={map} places={shown} selectedId={focus?.id ?? null} onSelect={(p) => setSelected(p.id)} />
+      <SiteMap map={map} height={Math.max(320, height * 0.72)} places={shown} selectedId={focus?.id ?? null} onSelect={(p) => setSelected(p.id)} />
       {focus ? <PlaceCard place={focus} /> : <Caption>Tap a pin to see what’s there.</Caption>}
       {kind !== 'all' && shown.length > 1 && (
         <Card style={{ gap: 0 }}>
