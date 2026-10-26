@@ -14,6 +14,7 @@ EXPO_PUBLIC_SUPABASE_URL="${EXPO_PUBLIC_SUPABASE_URL:-https://lkyrieejwifdbnhzcr
 EXPO_PUBLIC_SUPABASE_ANON_KEY="${EXPO_PUBLIC_SUPABASE_ANON_KEY:-sb_publishable_4ZAKw7jmc8gebwXpPk468A_-NyxIz56}" \
 EXPO_PUBLIC_APP_URL="$SITE" \
 EXPO_PUBLIC_DEMO_URL="$SITE/demo/" \
+EXPO_PUBLIC_ZXING_WASM_PATH=/Cooperstown-experience/zxing_reader.wasm \
   npx expo export -p web --output-dir "$OUT"
 
 # Empty database settings: the demo runs on its built-in sample data.
@@ -22,9 +23,12 @@ EXPO_PUBLIC_SUPABASE_URL= \
 EXPO_PUBLIC_SUPABASE_ANON_KEY= \
 EXPO_PUBLIC_APP_URL="$SITE/demo" \
 EXPO_PUBLIC_DEMO_URL= \
+EXPO_PUBLIC_ZXING_WASM_PATH=/Cooperstown-experience/zxing_reader.wasm \
   npx expo export -p web --output-dir "$DEMO_TMP" --clear
 mv "$DEMO_TMP" "$OUT/demo"
 cp "$OUT/index.html" "$OUT/live.html"
+# The QR reader for browsers without a built-in one (see src/lib/scanner-setup.web.ts).
+cp node_modules/zxing-wasm/dist/reader/zxing_reader.wasm "$OUT/zxing_reader.wasm"
 cp "$OUT/demo/index.html" "$OUT/demo/app.html"
 
 # Pages serves one 404.html for every unknown path (deep links like /fan/schedule). It loads whichever app the path

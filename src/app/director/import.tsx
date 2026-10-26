@@ -259,7 +259,7 @@ export default function ImportScreen() {
               <Button title={sendInvites ? 'Yes' : 'No'} small variant={sendInvites ? 'dark' : 'secondary'} onPress={() => setSendInvites(!sendInvites)} />
             </Row>
           ) : (
-            <Caption>Teams, organizations, hometowns and team reps are saved to the Cooperstown database. Player rows and invite emails come with the family features.</Caption>
+            <Caption>Teams, organizations, hometowns and team reps are saved to the Cooperstown database. Player rows become the roster, and each player gets a QR check-in pass that their parent sees after signing in with the registration email. Invite emails aren’t set up yet.</Caption>
           )}
           <Button
             title={
@@ -284,7 +284,8 @@ export default function ImportScreen() {
             <H2 style={{ fontSize: 18 }}>Import complete</H2>
           </Row>
           <Body>
-            {summary.teamsCreated} new teams, {summary.teamsUpdated} updated · {summary.playersCreated} players added · {summary.invitesCreated} invites created
+            {summary.teamsCreated} new teams, {summary.teamsUpdated} updated · {summary.playersCreated} players added
+            {backend.features.invites ? ` · ${summary.invitesCreated} invites created` : ''}
             {!backend.features.invites ? '' : sendInvites ? `, ${summary.invitesSent} emailed` : ' (not sent yet)'}.
           </Body>
           <Row>

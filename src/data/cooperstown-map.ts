@@ -1,7 +1,7 @@
 // Row <-> model mapping for the Cooperstown All Star Village database (utproducts/cooperstown, Supabase project
 // "cooperstown"). Pure: no network here, so it's tested against real rows.
 import { DEFAULT_TZ, localDateKey, localTimeKey, zonedToIso } from '../lib/time';
-import type { EventWeek, Game, Team, TeamCheckin, UmpireCode } from './types';
+import type { EventWeek, Game, Player, Team, TeamCheckin, UmpireCode } from './types';
 
 // The tournament's grounds (weather and directions).
 export const VENUE = {
@@ -259,4 +259,85 @@ export function umpGameToGame(
     note: null,
     baseballsUsed: g.baseballs,
   };
+}
+
+// --- players (003_family_features) ---------------------------------------------------------------------------------
+
+export interface PlayerRow {
+  id: string;
+  team_id: string;
+  first_name: string;
+  last_name: string;
+  jersey_number: string;
+  guardian_name: string;
+  guardian_email: string;
+  guardian_phone: string;
+  check_in_token: string;
+  checked_in_at: string | null;
+  checked_in_by: string;
+  external_id: string;
+}
+
+export const PLAYER_COLUMNS = 'id, team_id, first_name, last_name, jersey_number, guardian_name, guardian_email, guardian_phone, check_in_token, checked_in_at, checked_in_by, external_id';
+
+export function toPlayer(p: PlayerRow): Player {
+  return {
+    id: p.id,
+    teamId: p.team_id,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    jerseyNumber: p.jersey_number || null,
+    birthDate: null,
+    guardianName: p.guardian_name || null,
+    guardianEmail: p.guardian_email || null,
+    guardianPhone: p.guardian_phone || null,
+    checkInToken: p.check_in_token,
+    checkedInAt: p.checked_in_at,
+    checkedInBy: p.checked_in_by || null,
+    externalId: p.external_id || null,
+  };
+}
+
+/** A row from team_roster(): what a family following the team may see (no pass, no contacts). */
+export interface RosterRow {
+  id: string;
+  first_name: string;
+  last_initial: string;
+  jersey_number: string;
+  checked_in: boolean;
+}
+
+export function rosterToPlayer(r: RosterRow, teamId: string): Player {
+  return {
+    id: r.id,
+    teamId,
+    firstName: r.first_name,
+    lastName: r.last_initial ? `${r.last_initial}.` : '',
+    jerseyNumber: r.jersey_number || null,
+    birthDate: null,
+    guardianName: null,
+    guardianEmail: null,
+    guardianPhone: null,
+    checkInToken: '',
+    // The time isn't shared with other families, only whether they're in.
+    checkedInAt: r.checked_in ? '1970-01-01T00:00:00Z' : null,
+    checkedInBy: null,
+    externalId: null,
+  };
+}
+
+/** Model -> row for inserts and updates. The database makes the check-in token (upper-case, unguessable). */
+export function toPlayerPatch(p: Partial<Player>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (p.teamId !== undefined) row.team_id = p.teamId;
+  if (p.firstName !== undefined) row.first_name = p.firstName.trim();
+  if (p.lastName !== undefined) row.last_name = (p.lastName ?? '').trim();
+  if (p.jerseyNumber !== undefined) row.jersey_number = (p.jerseyNumber ?? '').trim();
+  if (p.guardianName !== undefined) row.guardian_name = (p.guardianName ?? '').trim();
+  if (p.guardianEmail !== undefined) row.guardian_email = (p.guardianEmail ?? '').trim().toLowerCase();
+  if (p.guardianPhone !== undefined) row.guardian_phone = (p.guardianPhone ?? '').trim();
+  if (p.externalId !== undefined) row.external_id = p.externalId ?? '';
+  if (p.checkedInAt !== undefined) row.checked_in_at = p.checkedInAt;
+  if (p.checkedInBy !== undefined) row.checked_in_by = p.checkedInBy ?? '';
+  return row;
 }

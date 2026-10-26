@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { C, S } from '@/constants/theme';
@@ -17,7 +17,7 @@ export function checkinItems(event: EventWeek | null): string[] {
 }
 
 /** Team-by-team arrival check-in: tick the week's list, add notes, mark the team checked in. */
-export function TeamCheckinScreen({ event, teams }: { event: EventWeek | null; teams: Team[] }) {
+export function TeamCheckinScreen({ event, teams, header }: { event: EventWeek | null; teams: Team[]; header?: ReactNode }) {
   const checkins = useTable('team_checkins');
   const [filter, setFilter] = useState<'waiting' | 'all'>('waiting');
   const [q, setQ] = useState('');
@@ -30,6 +30,7 @@ export function TeamCheckinScreen({ event, teams }: { event: EventWeek | null; t
   return (
     <Screen refreshing={checkins.loading} onRefresh={checkins.refresh}>
       <H1>Check-in</H1>
+      {header}
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <H3>

@@ -100,7 +100,7 @@ export default function Welcome() {
 
       {backend.sendSignInCode && (
       <Card>
-        <H2>{step === 'email' ? 'Sign in' : 'Check your email'}</H2>
+        <H2>{step === 'email' ? (backend.signInWithPassword ? 'Parents: your player’s QR pass' : 'Sign in') : 'Check your email'}</H2>
         {step === 'email' ? (
           <>
             <Body style={{ color: C.muted }}>

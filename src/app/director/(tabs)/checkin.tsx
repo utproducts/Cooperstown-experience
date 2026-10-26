@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Badge, Body, Button, Caption, Card, Divider, Field, H1, H3, Icon, Progress, Row, Screen, Segmented, Stack, confirmAction } from '@/components/ui';
@@ -10,18 +10,32 @@ import { TeamCheckinScreen } from '@/components/team-checkin';
 import type { CheckInResult } from '@/data/backend';
 import { parseCheckInPayload } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
+import '@/lib/scanner-setup';
 
 type Filter = 'pending' | 'all' | 'teams';
 
 export default function CheckInTab() {
   const { backend } = useAuth();
   const d = useDirectorData();
+  const [mode, setMode] = useState<'players' | 'teams'>('players');
   // Without player rosters, check-in is team by team (Cooperstown's checklist).
   if (!backend.features.rosters) return <TeamCheckinScreen event={d.event} teams={d.teams} />;
-  return <CheckIn />;
+  // On the Cooperstown database both run: players' QR passes and the team checklist from the admin site.
+  const switcher =
+    backend.mode === 'cooperstown' ? (
+      <Segmented
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'players', label: 'Player QR passes' },
+          { value: 'teams', label: 'Team checklist' },
+        ]}
+      />
+    ) : null;
+  return switcher && mode === 'teams' ? <TeamCheckinScreen event={d.event} teams={d.teams} header={switcher} /> : <CheckIn header={switcher} />;
 }
 
-function CheckIn() {
+function CheckIn({ header }: { header?: ReactNode }) {
   const { backend, profile } = useAuth();
   const d = useDirectorData();
   const [permission, requestPermission] = useCameraPermissions();
@@ -81,6 +95,13 @@ function CheckIn() {
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
       <H1>Check-in</H1>
+      {header}
+      {d.players.length === 0 && (
+        <Card style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0' }}>
+          <Body style={{ fontWeight: '700' }}>No players in this week yet</Body>
+          <Caption>Import a player roster (More → Import registrations) or add players on a team’s page. Each player gets a QR pass.</Caption>
+        </Card>
+      )}
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <H3>
@@ -93,9 +114,10 @@ function CheckIn() {
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {scanning && permission?.granted ? (
-          <View>
+          // The preview fills a fixed-height box (on the web, CameraView takes its size from its parent).
+          <View style={styles.camera}>
             <CameraView
-              style={styles.camera}
+              style={StyleSheet.absoluteFill}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
               onBarcodeScanned={({ data }) => onScan(data)}

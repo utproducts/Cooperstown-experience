@@ -1,8 +1,8 @@
 // The app on the Cooperstown All Star Village database (utproducts/cooperstown, Supabase project "cooperstown").
 // Uses only the publishable key: the database's row-level security decides everything. Families read published weeks
 // without an account (followed teams are kept on the device); staff sign in with their email and password; umpires
-// score through ump_games / ump_score with their own code. Tables for family accounts, rosters, alerts, meetings and
-// photos don't exist there yet (see supabase/phase2-proposal), so those features are switched off.
+// score through ump_games / ump_score with their own code. Parents sign in with an emailed code to get their player's
+// QR check-in pass (players, from 003_family_features); staff scan passes with check_in_player.
 import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,7 +21,13 @@ import {
   toUmpireCode,
   umpGameToGame,
   winnerIndex,
+  PLAYER_COLUMNS,
+  rosterToPlayer,
+  toPlayer,
+  toPlayerPatch,
   type CheckinRow,
+  type PlayerRow,
+  type RosterRow,
   type ContactRow,
   type FieldRow,
   type GameRow,
@@ -29,12 +35,12 @@ import {
   type UmpireCodeRow,
   type WeekRow,
 } from './cooperstown-map';
-import type { Game, Profile, Team } from './types';
+import type { Game, Player, Profile, Team } from './types';
 
 const FEATURES: Features = {
-  familyAccounts: false,
+  familyAccounts: true,
   followCodes: false,
-  rosters: false,
+  rosters: true,
   alerts: false,
   meetings: false,
   photos: false,
@@ -164,6 +170,20 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
       await AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
       await loadProfile(data.user?.id, data.user?.email);
     },
+    // Parents: a 6-digit code (or link) emailed to them proves the address, which is what links their player's pass.
+    async sendSignInCode(email) {
+      const { error } = await client.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { shouldCreateUser: true, emailRedirectTo: Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin + window.location.pathname.replace(/\/welcome$/, '') : undefined },
+      });
+      fail(error);
+    },
+    async verifySignInCode(email, code) {
+      const { data, error } = await client.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: 'email' });
+      fail(error);
+      await AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
+      await loadProfile(data.user?.id, data.user?.email);
+    },
     async continueAsGuest() {
       await AsyncStorage.setItem(GUEST_KEY, '1').catch(() => {});
       profile = GUEST;
@@ -225,8 +245,27 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
         case 'follows':
           rows = follows;
           break;
+        case 'players': {
+          const teamId = q?.eq?.teamId as string | undefined;
+          if (!isStaff() && teamId) {
+            // Families get a team's roster without passes or contacts (only for teams they follow or have a child on).
+            const { data, error } = await client.rpc('team_roster', { p_team: teamId });
+            if (error) return [];
+            rows = ((data ?? []) as RosterRow[]).map((r) => rosterToPlayer(r, teamId));
+            break;
+          }
+          if (!profile || profile.id === GUEST.id) return [];
+          let pq = client.from('players').select(PLAYER_COLUMNS);
+          if (teamId) pq = pq.eq('team_id', teamId);
+          else if (q?.in?.column === 'teamId') pq = pq.in('team_id', (q.in.values as string[]).filter((v) => v !== '__none__'));
+          // Staff see every row; anyone else only their own children (row-level security).
+          const { data, error } = await pq.order('last_name').order('first_name').limit(5000);
+          fail(error);
+          rows = ((data ?? []) as PlayerRow[]).map(toPlayer);
+          break;
+        }
         default:
-          // Family-side tables (players, alerts, meetings, photos, invites) don't exist here yet.
+          // Family-side tables (alerts, meetings, photos, invites) aren't wired up yet.
           return [];
       }
       return ordered(
@@ -307,6 +346,18 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           emitLocal('follows');
           return created as unknown as Tables[typeof table][];
         }
+        case 'players': {
+          const out: Player[] = [];
+          for (let i = 0; i < rows.length; i += 200) {
+            // No check_in_token: the database makes an unguessable one.
+            const payload = (rows.slice(i, i + 200) as Partial<Player>[]).map(({ checkInToken: _t, checkedInAt: _c, checkedInBy: _b, ...p }) => toPlayerPatch(p));
+            const { data, error } = await client.from('players').insert(payload).select(PLAYER_COLUMNS);
+            fail(error);
+            out.push(...((data ?? []) as PlayerRow[]).map(toPlayer));
+          }
+          emitLocal('players');
+          return out as unknown as Tables[typeof table][];
+        }
         case 'notifications':
         case 'invites':
           // No alerts or invite emails here yet: accept and drop, so schedule changes still go through.
@@ -377,6 +428,15 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           fail((await client.from('umpire_codes').update(row).eq('id', Number(id))).error);
           return;
         }
+        case 'players': {
+          const pp = { ...(patch as Partial<Player>) };
+          // Who checked them in reads as the staff member's name, like the database's own check-in.
+          if (pp.checkedInBy) pp.checkedInBy = profile?.name ?? '';
+          const row = toPlayerPatch(pp);
+          if (Object.keys(row).length) fail((await client.from('players').update(row).eq('id', id)).error);
+          emitLocal('players');
+          return;
+        }
         case 'team_checkins': {
           fail(
             (
@@ -412,6 +472,10 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
         case 'umpire_codes':
           fail((await client.from('umpire_codes').delete().in('id', ids.map(Number))).error);
           return;
+        case 'players':
+          fail((await client.from('players').delete().in('id', ids)).error);
+          emitLocal('players');
+          return;
         case 'follows':
           follows = follows.filter((f) => !ids.includes(f.id));
           await AsyncStorage.setItem(FOLLOWS_KEY, JSON.stringify(follows)).catch(() => {});
@@ -425,14 +489,15 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
     subscribe(table, cb) {
       if (!localListeners.has(table)) localListeners.set(table, new Set());
       localListeners.get(table)!.add(cb);
-      const dbTable = { events: 'weeks', teams: 'teams', games: 'games', umpire_codes: 'umpire_codes', team_checkins: 'checkins' }[table as string];
+      const dbTable = { events: 'weeks', teams: 'teams', games: 'games', umpire_codes: 'umpire_codes', team_checkins: 'checkins', players: 'players' }[table as string];
       if (!dbTable) return () => localListeners.get(table)?.delete(cb);
       // Realtime when the table is published for it; a periodic refresh either way so scores never go stale.
       const channel = client
         .channel(`rt-${dbTable}-${randomToken(6)}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: dbTable }, () => cb())
         .subscribe();
-      const timer = setInterval(cb, table === 'games' ? 30_000 : 120_000);
+      // Games and check-ins change fast during the week; the rest rarely.
+      const timer = setInterval(cb, table === 'games' || table === 'players' ? 30_000 : 120_000);
       return () => {
         localListeners.get(table)?.delete(cb);
         clearInterval(timer);
@@ -444,10 +509,26 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
       throw new Error('Pick your team from the list.');
     },
     async myPlayers() {
-      return [];
+      if (!profile || profile.id === GUEST.id || !profile.email) return [];
+      // Row-level security only returns a parent's own children, and only after an emailed-code sign-in.
+      const { data, error } = await client.from('players').select(PLAYER_COLUMNS).eq('guardian_email', profile.email.toLowerCase()).order('first_name');
+      fail(error);
+      return ((data ?? []) as PlayerRow[]).map(toPlayer);
     },
-    async checkInByToken() {
-      throw notAvailable('Player QR check-in');
+    async checkInByToken(token) {
+      const { data, error } = await client.rpc('check_in_player', { p_token: token });
+      fail(error);
+      if (!data || data.error) throw new Error(data?.error ?? 'Something went wrong. Please try again.');
+      const [{ data: row }, { data: teamRow }] = await Promise.all([
+        client.from('players').select(PLAYER_COLUMNS).eq('id', data.player.id).single(),
+        client.from('teams').select('id, week_id, age_group, name, organization, city, state, players, coaches').eq('id', data.team.id).single(),
+      ]);
+      emitLocal('players');
+      return {
+        player: row ? toPlayer(row as PlayerRow) : ({ id: data.player.id, teamId: data.team.id, firstName: data.player.firstName, lastName: data.player.lastName, jerseyNumber: data.player.jersey || null, checkedInAt: data.player.checkedInAt } as Player),
+        team: teamRow ? toTeam(teamRow as TeamRow) : null,
+        alreadyCheckedIn: !!data.alreadyCheckedIn,
+      };
     },
     async sendInvites() {
       return 0;

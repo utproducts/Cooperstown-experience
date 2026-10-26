@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { GameCard } from '@/components/game-card';
-import { Badge, Body, Button, Caption, Card, Divider, Field, H1, H3, Row, Screen, Section, showMessage } from '@/components/ui';
+import { PlayerPassSheet } from '@/components/player-pass';
+import { Badge, Body, Button, Caption, Card, Divider, ErrorNote, Field, H1, H3, Row, Screen, Section, showMessage } from '@/components/ui';
 import { C, Fonts, S } from '@/constants/theme';
 import type { Team } from '@/data/types';
 import { APP_URL, useBackend } from '@/data';
 import { useDirectorData } from '@/data/director';
+import { randomToken } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
 
 export default function TeamDetail() {
@@ -18,6 +20,8 @@ export default function TeamDetail() {
   const team = d.teams.find((t) => t.id === id);
   const roster = d.players.filter((p) => p.teamId === id);
   const invites = d.invites.filter((i) => i.teamId === id);
+  const [pass, setPass] = useState<string | null>(null);
+  const passPlayer = roster.find((p) => p.id === pass);
   const games = d.games.filter((g) => g.homeTeamId === id || g.awayTeamId === id);
   const [busy, setBusy] = useState(false);
 
@@ -85,6 +89,7 @@ export default function TeamDetail() {
       {backend.features.rosters && (
       <Section title={`Roster (${roster.length})`}>
         <Card style={{ gap: 0 }}>
+          {roster.length === 0 && <Caption>No players yet. Import a roster, or add players below.</Caption>}
           {roster.map((p, i) => (
             <View key={p.id}>
               {i > 0 && <Divider />}
@@ -99,13 +104,17 @@ export default function TeamDetail() {
                   </Caption>
                 </View>
                 {p.checkedInAt ? <Badge label={`In ${formatTime(p.checkedInAt, d.event?.timezone)}`} tone="green" /> : <Badge label="Not in" tone="muted" />}
+                <Button title="QR pass" icon="qr-code" small variant="secondary" onPress={() => setPass(p.id)} />
               </Row>
             </View>
           ))}
         </Card>
+        <AddPlayer teamId={team.id} />
       </Section>
 
       )}
+
+      {passPlayer && <PlayerPassSheet player={passPlayer} team={team} timeZone={d.event?.timezone} onClose={() => setPass(null)} />}
 
       {backend.features.invites && (
       <Section title={`Invitations (${invites.length})`}>
@@ -130,6 +139,76 @@ export default function TeamDetail() {
         {games.length === 0 && <Caption>No games scheduled.</Caption>}
       </Section>
     </Screen>
+  );
+}
+
+/** Adds one player by hand; the database gives them a QR check-in pass. */
+function AddPlayer({ teamId }: { teamId: string }) {
+  const backend = useBackend();
+  const blank = { firstName: '', lastName: '', jersey: '', parentName: '', parentEmail: '' };
+  const [f, setF] = useState(blank);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const set = (k: keyof typeof blank) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+  const emailOk = !f.parentEmail.trim() || /^\S+@\S+\.\S+$/.test(f.parentEmail.trim());
+  return (
+    <Card>
+      <H3>Add a player</H3>
+      <Row>
+        <View style={{ flex: 1 }}>
+          <Field label="First name" value={f.firstName} onChangeText={set('firstName')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Field label="Last name" value={f.lastName} onChangeText={set('lastName')} />
+        </View>
+      </Row>
+      <Field label="Jersey #" value={f.jersey} onChangeText={set('jersey')} keyboardType="number-pad" />
+      <Field label="Parent name" value={f.parentName} onChangeText={set('parentName')} />
+      <Field
+        label="Parent email"
+        value={f.parentEmail}
+        onChangeText={set('parentEmail')}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        hint="The parent signs in with this email to see the player's QR pass."
+      />
+      <ErrorNote message={error} />
+      <Button
+        title="Add player"
+        icon="person-add"
+        variant="dark"
+        small
+        loading={busy}
+        disabled={!f.firstName.trim() || !emailOk}
+        onPress={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await backend.insert('players', [
+              {
+                teamId,
+                firstName: f.firstName.trim(),
+                lastName: f.lastName.trim(),
+                jerseyNumber: f.jersey.trim() || null,
+                guardianName: f.parentName.trim() || null,
+                guardianEmail: f.parentEmail.trim().toLowerCase() || null,
+                guardianPhone: null,
+                externalId: null,
+                birthDate: null,
+                checkInToken: randomToken(16),
+                checkedInAt: null,
+                checkedInBy: null,
+              },
+            ]);
+            setF(blank);
+          } catch (e) {
+            setError((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+    </Card>
   );
 }
 

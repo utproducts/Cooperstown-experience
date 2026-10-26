@@ -252,7 +252,7 @@ export function Empty({ icon = 'baseball-outline', title, body, action }: { icon
 
 export function Segmented<T extends string>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmented}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={styles.segmented}>
       {options.map((o) => (
         <Pressable key={o.value} onPress={() => onChange(o.value)} style={[styles.segment, value === o.value && styles.segmentActive]}>
           <Text style={[styles.segmentText, value === o.value && { color: C.white }]}>{o.label}</Text>

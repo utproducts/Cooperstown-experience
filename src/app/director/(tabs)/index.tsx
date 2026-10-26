@@ -31,8 +31,8 @@ export default function DirectorDashboard() {
   const event = d.event;
   const tz = event?.timezone;
   const today = localDateKey(new Date(now).toISOString(), tz);
-  // Player check-in with rosters; team check-in (Cooperstown's checklist) without.
-  const byTeams = !backend.features.rosters;
+  // Player check-in once a roster is in; team check-in (Cooperstown's checklist) until then.
+  const byTeams = !backend.features.rosters || d.players.length === 0;
   const checkUnits = byTeams ? d.teams.length : d.players.length;
   const checked = byTeams ? teamCheckins.data.filter((c) => c.checkedInAt && d.teams.some((t) => t.id === c.teamId)).length : d.players.filter((p) => p.checkedInAt).length;
   const todays = d.games.filter((g) => localDateKey(g.startsAt, tz) === today);
