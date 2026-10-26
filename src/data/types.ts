@@ -70,6 +70,8 @@ export interface Game {
   awayScore: number | null;
   status: GameStatus;
   stage: GameStage;
+  /** Bracket play only: which bracket, e.g. "Championship", "Monster", "Cooper". */
+  bracket: string | null;
   round: string | null;
   /** Short display number, e.g. 41 for "G41". */
   number: number;

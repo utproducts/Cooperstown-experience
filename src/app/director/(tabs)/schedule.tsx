@@ -34,13 +34,14 @@ export default function DirectorGames() {
   function exportCsv() {
     const name = (id: string | null, l: string | null) => d.teams.find((t) => t.id === id)?.name ?? l ?? '';
     const csv = toCsv(
-      ['Game', 'Date', 'Time', 'Field', 'Stage', 'Round', 'Away', 'Home', 'Away Score', 'Home Score', 'Status'],
+      ['Game', 'Date', 'Time', 'Field', 'Stage', 'Bracket', 'Round', 'Away', 'Home', 'Away Score', 'Home Score', 'Status'],
       d.games.map((g) => [
         `G${g.number}`,
         localDateKey(g.startsAt, tz),
         localTimeKey(g.startsAt, tz),
         g.field,
         g.stage,
+        g.bracket,
         g.round,
         name(g.awayTeamId, g.awayLabel),
         name(g.homeTeamId, g.homeLabel),
@@ -68,7 +69,7 @@ export default function DirectorGames() {
           { value: 'all', label: 'All' },
           { value: 'open', label: 'Not final' },
           { value: 'pool', label: 'Pool play' },
-          { value: 'bracket', label: 'Bracket' },
+          { value: 'bracket', label: 'Brackets' },
         ]}
       />
       <GamesByDay games={games} teams={d.teams} timeZone={tz} onPressGame={setEditing} emptyText="No games yet — use Build schedule." />

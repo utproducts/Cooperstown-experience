@@ -6,7 +6,9 @@ import {
   buildBracket,
   buildPoolMatchups,
   placeMatchups,
+  scheduleBrackets,
   shiftGames,
+  type BracketSchedulingOptions,
   type ScheduleOptions,
   type SlotGrid,
 } from '../lib/schedule';
@@ -170,6 +172,7 @@ export async function generatePoolPlay(
       awayScore: null,
       status: 'scheduled',
       stage: 'pool',
+      bracket: null,
       round: `Pool ${m.pool}`,
       number: n++,
       winnerToGameId: null,
@@ -180,69 +183,76 @@ export async function generatePoolPlay(
   return { created: rows.length, unscheduled: res.unscheduled.length };
 }
 
+export interface BracketPlan {
+  name: string;
+  teamIds: string[];
+}
+
 /**
- * Creates a single-elimination bracket from seeds. Each round is placed at the
- * next start time, spread across fields.
+ * Builds and schedules every bracket at once (Cooperstown: Championship,
+ * Monster, Cooper), replacing any existing bracket games, then notifies each
+ * bracket's teams. Nothing is saved unless every game fits.
  */
-export async function generateBracket(
+export async function generateBrackets(
   backend: Backend,
   event: EventWeek,
-  seededTeamIds: string[],
-  roundStarts: string[],
-  fields: string[],
-): Promise<number> {
-  const drafts = buildBracket(seededTeamIds);
-  if (drafts.length === 0) return 0;
-  const old = await backend.select('games', { eq: { eventId: event.id, stage: 'bracket' } });
-  await backend.remove('games', old.map((g) => g.id));
+  plans: BracketPlan[],
+  sched: Omit<BracketSchedulingOptions, 'existing' | 'timeZone'>,
+): Promise<{ created: number; usedLate: boolean; lastStart: string | null }> {
+  const all = await backend.select('games', { eq: { eventId: event.id } });
+  const brackets = plans.filter((p) => p.teamIds.length >= 2).map((p) => ({ name: p.name, drafts: buildBracket(p.teamIds) }));
+  const res = scheduleBrackets(brackets, { ...sched, timeZone: event.timezone, existing: all.filter((g) => g.stage === 'pool') });
+  if (res.unscheduled.length) {
+    throw new Error(`${res.unscheduled.length} bracket games don't fit in the selected days. Add a bracket day or allow late games.`);
+  }
+  await backend.remove('games', all.filter((g) => g.stage === 'bracket').map((g) => g.id));
 
-  let n = await nextGameNumber(backend, event.id);
-  const numberByKey = new Map<string, number>();
-  const rounds = [...new Set(drafts.map((d) => d.round))].sort((a, b) => a - b);
-  const rows: Partial<Game>[] = [];
-  for (const round of rounds) {
-    const inRound = drafts.filter((d) => d.round === round);
-    inRound.forEach((d, i) => {
-      numberByKey.set(d.key, n);
-      const startsAt = roundStarts[Math.min(round - 1, roundStarts.length - 1)];
-      const relabel = (l: string | null) => (l?.startsWith('Winner ') ? `Winner G${numberByKey.get(l.slice(7))}` : l);
-      rows.push({
-        eventId: event.id,
-        field: fields[i % fields.length],
-        startsAt,
-        homeTeamId: d.homeTeamId,
-        awayTeamId: d.awayTeamId,
-        homeLabel: relabel(d.homeLabel),
-        awayLabel: relabel(d.awayLabel),
-        homeScore: null,
-        awayScore: null,
-        status: 'scheduled',
-        stage: 'bracket',
-        round: d.roundName,
-        number: n++,
-        winnerToGameId: null,
-        winnerToSlot: null,
-        note: d.key, // temporary, replaced with links below
-      });
-    });
-  }
-  const created = await backend.insert('games', rows);
+  // Number games in the order they're played so "Winner G41" reads naturally.
+  let n = all.filter((g) => g.stage === 'pool').reduce((m, g) => Math.max(m, g.number), 0) + 1;
+  const ordered = [...res.placed].sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.field.localeCompare(b.field, undefined, { numeric: true }));
+  const numberOf = new Map(ordered.map((p) => [`${p.bracket}|${p.draft.key}`, n++]));
+  const relabel = (bracket: string, l: string | null) => (l?.startsWith('Winner ') ? `Winner G${numberOf.get(`${bracket}|${l.slice(7)}`)}` : l);
+
+  const created = await backend.insert(
+    'games',
+    ordered.map((p) => ({
+      eventId: event.id,
+      field: p.field,
+      startsAt: p.startsAt,
+      homeTeamId: p.draft.homeTeamId,
+      awayTeamId: p.draft.awayTeamId,
+      homeLabel: relabel(p.bracket, p.draft.homeLabel),
+      awayLabel: relabel(p.bracket, p.draft.awayLabel),
+      homeScore: null,
+      awayScore: null,
+      status: 'scheduled' as const,
+      stage: 'bracket' as const,
+      bracket: p.bracket,
+      round: p.draft.roundName,
+      number: numberOf.get(`${p.bracket}|${p.draft.key}`)!,
+      winnerToGameId: null,
+      winnerToSlot: null,
+      note: `${p.bracket}|${p.draft.key}`, // temporary, replaced with links below
+    })),
+  );
   const idByKey = new Map(created.map((g) => [g.note!, g.id]));
-  for (const d of drafts) {
-    const id = idByKey.get(d.key)!;
-    await backend.update('games', id, {
+  for (const p of ordered) {
+    const key = `${p.bracket}|${p.draft.key}`;
+    await backend.update('games', idByKey.get(key)!, {
       note: null,
-      winnerToGameId: d.winnerTo ? idByKey.get(d.winnerTo.key)! : null,
-      winnerToSlot: d.winnerTo?.slot ?? null,
+      winnerToGameId: p.draft.winnerTo ? idByKey.get(`${p.bracket}|${p.draft.winnerTo.key}`)! : null,
+      winnerToSlot: p.draft.winnerTo?.slot ?? null,
     });
   }
-  await notify(backend, event.id, {
-    kind: 'schedule',
-    title: 'Bracket is set!',
-    body: 'Championship bracket games are now posted. Check the schedule for your first bracket game.',
-    teamIds: seededTeamIds,
-  });
-  return created.length;
+  for (const plan of plans.filter((p) => p.teamIds.length)) {
+    await notify(backend, event.id, {
+      kind: 'schedule',
+      title: `Bracket play: you're in the ${plan.name} bracket`,
+      body: `Seeds are set from pool play. Check the schedule for your first ${plan.name} bracket game.`,
+      teamIds: plan.teamIds,
+    });
+  }
+  return { created: created.length, usedLate: res.usedLate, lastStart: ordered.at(-1)?.startsAt ?? null };
 }
 
 function teamName(teams: Team[], id: string | null, fallback: string | null) {
@@ -266,7 +276,7 @@ export async function saveScore(
     await notify(backend, game.eventId, {
       kind: 'score',
       title: `Final: ${away} ${awayScore}, ${home} ${homeScore}`,
-      body: `G${game.number} on ${game.field}${game.round ? ` · ${game.round}` : ''}`,
+      body: `G${game.number} on ${game.field}${game.bracket ? ` · ${game.bracket} bracket` : ''}${game.round ? ` · ${game.round}` : ''}`,
       teamIds: [game.homeTeamId, game.awayTeamId].filter(Boolean) as string[],
     });
     const adv = bracketAdvance(updated);

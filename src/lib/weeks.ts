@@ -41,16 +41,17 @@ export interface SeasonWeekDraft {
 }
 
 /**
- * Consecutive tournament weeks. `daysPerWeek` counts arrival through departure
- * (e.g. 7 for Saturday → Friday); a new week starts every `cadenceDays`.
+ * Consecutive tournament weeks. Cooperstown runs 6-day weeks with no break
+ * days, so weeks roll: the next week's Day 1 is the day after the last one's
+ * Day 6, and Day 1 lands on a different weekday each week.
  */
 export function generateSeasonWeeks(
   firstArrival: string,
   count: number,
-  { daysPerWeek = 7, cadenceDays = 7, label = 'Week' }: { daysPerWeek?: number; cadenceDays?: number; label?: string } = {},
+  { daysPerWeek = 6, breakDays = 0, label = 'Week' }: { daysPerWeek?: number; breakDays?: number; label?: string } = {},
 ): SeasonWeekDraft[] {
   return Array.from({ length: Math.max(0, count) }, (_, i) => {
-    const startsOn = addDays(firstArrival, i * cadenceDays);
+    const startsOn = addDays(firstArrival, i * (daysPerWeek + breakDays));
     return { name: `${label} ${i + 1}`, startsOn, endsOn: addDays(startsOn, daysPerWeek - 1) };
   });
 }

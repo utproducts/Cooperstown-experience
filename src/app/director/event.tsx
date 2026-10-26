@@ -149,24 +149,31 @@ function SeasonGenerator({ existing, onCreated }: { existing: EventWeek[]; onCre
   const [first, setFirst] = useState('');
   const [count, setCount] = useState('16');
   const [days, setDays] = useState('6');
+  const [breaks, setBreaks] = useState('0');
   const [label, setLabel] = useState('Week');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const drafts = DATE.test(first) ? generateSeasonWeeks(first, Math.min(30, Number(count) || 0), { daysPerWeek: Math.max(1, Number(days) || 6), label: label.trim() || 'Week' }) : [];
+  const drafts = DATE.test(first) ? generateSeasonWeeks(first, Math.min(30, Number(count) || 0), { daysPerWeek: Math.max(1, Number(days) || 6), breakDays: Math.max(0, Number(breaks) || 0), label: label.trim() || 'Week' }) : [];
   const overlaps = drafts.filter((d) => existing.some((e) => d.startsOn <= e.endsOn && e.startsOn <= d.endsOn));
 
   return (
     <Card>
       <H2 style={{ fontSize: 18 }}>Create a season of weeks</H2>
-      <Caption>A new week starts every 7 days from the first arrival day. Rename or adjust any week afterwards.</Caption>
+      <Caption>
+        Cooperstown weeks are 6 days with no break days, so they roll: each week starts the day after the previous one ends, and Day 1 falls on a
+        different weekday each week. Rename or adjust any week afterwards.
+      </Caption>
       <Field label="First arrival day (YYYY-MM-DD)" placeholder="2027-05-29" value={first} onChangeText={setFirst} autoCapitalize="none" />
       <Row>
         <View style={{ flex: 1 }}>
           <Field label="Number of weeks" value={count} onChangeText={setCount} keyboardType="number-pad" />
         </View>
         <View style={{ flex: 1 }}>
-          <Field label="Days per week" hint="Arrival through departure" value={days} onChangeText={setDays} keyboardType="number-pad" />
+          <Field label="Days per week" value={days} onChangeText={setDays} keyboardType="number-pad" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Field label="Break days between weeks" value={breaks} onChangeText={setBreaks} keyboardType="number-pad" />
         </View>
       </Row>
       <Field label="Name prefix" value={label} onChangeText={setLabel} />

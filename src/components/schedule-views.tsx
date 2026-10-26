@@ -98,15 +98,26 @@ export function StandingsTable({ teams, games, highlight = [] }: { teams: Team[]
 }
 
 export function BracketView({ games, teams, highlight = [], timeZone }: { games: Game[]; teams: Team[]; highlight?: string[]; timeZone?: string }) {
-  const bracket = games.filter((g) => g.stage === 'bracket');
-  if (bracket.length === 0) return <Empty icon="git-network-outline" title="Bracket not posted yet" body="Brackets are set after pool play wraps up." />;
-  const rounds = [...new Set(bracket.map((g) => g.round ?? ''))];
+  const bracketGames = games.filter((g) => g.stage === 'bracket');
+  // Families see their own team's bracket first.
+  const names = [...new Set(bracketGames.map((g) => g.bracket ?? 'Bracket'))];
+  const mine = names.find((n) => bracketGames.some((g) => (g.bracket ?? 'Bracket') === n && highlight.some((id) => id === g.homeTeamId || id === g.awayTeamId)));
+  const [picked, setPicked] = useState<string | null>(null);
+  if (bracketGames.length === 0) {
+    return <Empty icon="git-network-outline" title="Brackets not posted yet" body="After pool play, every team is seeded into the Championship, Monster or Cooper bracket." />;
+  }
+  const current = picked && names.includes(picked) ? picked : mine ?? names[0];
+  const inBracket = bracketGames.filter((g) => (g.bracket ?? 'Bracket') === current);
+  const rounds = [...new Set(inBracket.map((g) => g.round ?? ''))];
   return (
     <Stack>
+      {names.length > 1 && <Segmented value={current} onChange={setPicked} options={names.map((n) => ({ value: n, label: n === mine ? `${n} ★` : n }))} />}
       {rounds.map((r) => (
         <Stack key={r} gap={S.sm}>
-          <Caption style={styles.dayHeader}>{r}</Caption>
-          {bracket
+          <Caption style={styles.dayHeader}>
+            {current} · {r}
+          </Caption>
+          {inBracket
             .filter((g) => (g.round ?? '') === r)
             .map((g) => (
               <GameCard key={g.id} game={g} teams={teams} highlightTeamIds={highlight} timeZone={timeZone} showDay />

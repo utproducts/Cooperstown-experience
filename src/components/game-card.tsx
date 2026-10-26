@@ -73,9 +73,9 @@ export function GameCard({
       </Row>
       {line(game.awayTeamId, game.awayLabel, game.awayScore, awayWon)}
       {line(game.homeTeamId, game.homeLabel, game.homeScore, homeWon)}
-      {(game.round || game.note) && (
+      {(game.round || game.note || game.bracket) && (
         <Caption numberOfLines={2}>
-          {[game.round, game.note].filter(Boolean).join(' · ')}
+          {[game.bracket && `${game.bracket} bracket`, game.round, game.note].filter(Boolean).join(' · ')}
         </Caption>
       )}
     </Card>

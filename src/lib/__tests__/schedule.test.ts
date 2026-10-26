@@ -28,6 +28,7 @@ function game(p: Partial<Game> & Pick<Game, 'id'>): Game {
     awayScore: null,
     status: 'scheduled',
     stage: 'pool',
+    bracket: null,
     round: null,
     number: 1,
     winnerToGameId: null,
@@ -139,7 +140,7 @@ describe('bracket', () => {
     ]);
     expect(b.find((g) => g.key === 'R1-1')!.winnerTo).toEqual({ key: 'R2-1', slot: 'home' });
     expect(b.find((g) => g.key === 'R1-2')!.winnerTo).toEqual({ key: 'R2-1', slot: 'away' });
-    expect(b.find((g) => g.round === 3)!.roundName).toBe('Championship');
+    expect(b.find((g) => g.round === 3)!.roundName).toBe('Final');
   });
 
   it('gives byes to top seeds', () => {

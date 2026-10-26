@@ -1,4 +1,4 @@
-import { buildPoolMatchups, placeMatchups } from '../lib/schedule';
+import { buildPoolMatchups, dailySlots, fieldNames, placeMatchups } from '../lib/schedule';
 import { generateSeasonWeeks } from '../lib/weeks';
 import { addMinutes, DEFAULT_TZ, zonedToIso, localDateKey } from '../lib/time';
 import type { Tables } from './backend';
@@ -66,7 +66,7 @@ export function buildSeed(now = new Date()): SeedTables {
     id: eventId,
     name: 'Week 4',
     startsOn: arrival,
-    endsOn: addDays(arrival, 6),
+    endsOn: addDays(arrival, 5),
     venue: 'Cooperstown Baseball Complex',
     address: 'Cooperstown, NY 13326',
     latitude: 42.6584,
@@ -75,7 +75,7 @@ export function buildSeed(now = new Date()): SeedTables {
     timezone: DEFAULT_TZ,
   };
 
-  const pools = ['A', 'B', 'C', 'D'];
+  const pools = ['A', 'B'];
   const teams: Team[] = TEAMS.map(([name, city, state], i) => ({
     id: `team-${i + 1}`,
     eventId,
@@ -83,7 +83,7 @@ export function buildSeed(now = new Date()): SeedTables {
     city,
     state,
     code: `${name.split(' ').pop()!.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4).padEnd(4, 'X')}-${['7K2Q', 'M4TX', 'H8RN', 'B3WZ', 'Q9PL', 'C6VD', 'D2JS', 'R5NK', 'H7MA', 'B4TS', 'O3RC', 'G8TR', 'T6ND', 'P2SP', 'K9NG', 'S5LG'][i]}`,
-    pool: pools[i % 4],
+    pool: pools[i % 2],
     coachName: `Coach ${LAST[(i * 5) % LAST.length]}`,
     coachEmail: `coach${i + 1}@demo.app`,
     coachPhone: `555-01${String(i).padStart(2, '0')}`,
@@ -115,13 +115,14 @@ export function buildSeed(now = new Date()): SeedTables {
     }
   });
 
-  // Pool play on days 2-4 (arrival + 1 .. arrival + 3)
+  // Cooperstown format: 6 pool games per team on Days 1–4, 12 fields, 2-hour games from 8 AM to 10 PM.
   const grid = {
-    days: [addDays(arrival, 1), addDays(arrival, 2), addDays(arrival, 3)],
-    times: ['08:00', '10:30', '13:00', '15:30', '18:00', '20:30'],
-    fields: ['Field 1', 'Field 2', 'Field 3'],
+    days: [arrival, addDays(arrival, 1), addDays(arrival, 2), addDays(arrival, 3)],
+    times: dailySlots('08:00', '22:00', 120),
+    fields: fieldNames(12),
   };
-  const matchups = buildPoolMatchups(teams, 3);
+  const matchups = buildPoolMatchups(teams, 6);
+  // Two games a day spreads the demo over all four pool days.
   const placed = placeMatchups(matchups, grid, { minGapMinutes: 240, maxGamesPerTeamPerDay: 2 });
   const nowMs = now.getTime();
   const games: Game[] = placed.scheduled
@@ -147,6 +148,7 @@ export function buildSeed(now = new Date()): SeedTables {
         awayScore: done || live ? (live ? Math.min(as, 2) : as) : null,
         status: done ? 'final' : live ? 'live' : 'scheduled',
         stage: 'pool',
+        bracket: null,
         round: `Pool ${m.pool}`,
         number: i + 1,
         winnerToGameId: null,
@@ -159,7 +161,7 @@ export function buildSeed(now = new Date()): SeedTables {
 
   return {
     // The demo week (with all the data) sits in the middle of a 7-week season.
-    events: generateSeasonWeeks(addDays(arrival, -21), 7).map((w, i) =>
+    events: generateSeasonWeeks(addDays(arrival, -18), 7).map((w, i) =>
       i === 3 ? event : { ...event, ...w, id: `evt-week-${i + 1}` },
     ),
     teams,

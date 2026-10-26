@@ -22,7 +22,7 @@ export default function FanSchedule() {
           { value: 'mine', label: 'My team' },
           { value: 'all', label: 'All games' },
           { value: 'standings', label: 'Standings' },
-          { value: 'bracket', label: 'Bracket' },
+          { value: 'bracket', label: 'Brackets' },
         ]}
       />
       {tab === 'mine' && (

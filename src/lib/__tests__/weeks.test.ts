@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateSeasonWeeks, matchWeek, pickDefaultEvent, weekStatus } from '../weeks';
 
-const season = generateSeasonWeeks('2027-05-29', 16).map((w, i) => ({ id: `w${i + 1}`, ...w }));
+const season = generateSeasonWeeks('2027-05-29', 16, { daysPerWeek: 7 }).map((w, i) => ({ id: `w${i + 1}`, ...w }));
 
 describe('season weeks', () => {
   it('generates consecutive Saturday-to-Friday weeks', () => {
@@ -11,8 +11,16 @@ describe('season weeks', () => {
     expect(season[15]).toMatchObject({ startsOn: '2027-09-11', endsOn: '2027-09-17' });
   });
 
-  it('supports 6-day weeks', () => {
-    expect(generateSeasonWeeks('2027-06-05', 1, { daysPerWeek: 6 })[0].endsOn).toBe('2027-06-10');
+  it('defaults to 6-day rolling weeks, so Day 1 moves through the weekdays', () => {
+    const w = generateSeasonWeeks('2027-06-05', 3); // a Saturday
+    expect(w.map((x) => x.startsOn)).toEqual(['2027-06-05', '2027-06-11', '2027-06-17']);
+    expect(w[0].endsOn).toBe('2027-06-10');
+    const weekday = (d: string) => new Date(`${d}T12:00:00Z`).getUTCDay();
+    expect(w.map((x) => weekday(x.startsOn))).toEqual([6, 5, 4]); // Sat, Fri, Thu
+  });
+
+  it('supports break days between weeks', () => {
+    expect(generateSeasonWeeks('2027-06-05', 2, { daysPerWeek: 6, breakDays: 1 })[1].startsOn).toBe('2027-06-12');
   });
 });
 

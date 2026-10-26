@@ -245,7 +245,8 @@ function seedOrder(size: number): number[] {
 }
 
 function roundName(teamsInRound: number): string {
-  if (teamsInRound === 2) return 'Championship';
+  // "Final" rather than "Championship": "Championship" is one of the bracket names.
+  if (teamsInRound === 2) return 'Final';
   if (teamsInRound === 4) return 'Semifinal';
   if (teamsInRound === 8) return 'Quarterfinal';
   return `Round of ${teamsInRound}`;
@@ -366,4 +367,168 @@ export function shiftGames(
     if (g.awayTeamId) teams.add(g.awayTeamId);
   }
   return { changes, affectedTeamIds: [...teams] };
+}
+
+// ---------------------------------------------------------------------------
+// Cooperstown format: fixed-length games in a daily window, several brackets
+
+/** Start times for back-to-back games, e.g. 08:00–22:00 with 120-minute games → 08:00 … 20:00. */
+export function dailySlots(dayStart: string, dayEnd: string, gameMinutes: number): string[] {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + (m || 0);
+  };
+  const out: string[] = [];
+  for (let t = toMin(dayStart); t + gameMinutes <= toMin(dayEnd); t += gameMinutes) {
+    out.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+  }
+  return out;
+}
+
+/** "Field 1" … "Field n" */
+export function fieldNames(count: number): string[] {
+  return Array.from({ length: Math.max(0, count) }, (_, i) => `Field ${i + 1}`);
+}
+
+/**
+ * Splits overall seeds (best first) into consecutive tiers, one per bracket
+ * name: e.g. top third → Championship, middle → Monster, bottom → Cooper.
+ * Earlier brackets take the extra team when the split isn't even.
+ */
+export function splitIntoBrackets(seeds: string[], names: string[]): { name: string; teamIds: string[] }[] {
+  const n = Math.max(1, names.length);
+  const base = Math.floor(seeds.length / n);
+  const extra = seeds.length % n;
+  let i = 0;
+  return names.map((name, k) => {
+    const size = base + (k < extra ? 1 : 0);
+    const teamIds = seeds.slice(i, i + size);
+    i += size;
+    return { name, teamIds };
+  });
+}
+
+export interface BracketSchedulingOptions {
+  /** ISO dates available for bracket play. */
+  days: string[];
+  /** Regular start times each day (from dailySlots). */
+  times: string[];
+  /** Extra start times used only if the brackets can't finish otherwise (e.g. ["22:00"]). */
+  lateTimes: string[];
+  fields: string[];
+  gameMinutes: number;
+  /** Most games a team still winning may play in one day (Cooperstown: 4). */
+  maxGamesPerTeamPerDay: number;
+  timeZone?: string;
+  /** Games already on the schedule (pool play) that count toward a team's daily total and occupy fields. */
+  existing?: Pick<Game, 'startsAt' | 'field' | 'homeTeamId' | 'awayTeamId'>[];
+}
+
+export interface PlacedBracketGame {
+  bracket: string;
+  draft: BracketGameDraft;
+  field: string;
+  startsAt: string;
+  late: boolean;
+}
+
+export interface BracketScheduleResult {
+  placed: PlacedBracketGame[];
+  unscheduled: { bracket: string; draft: BracketGameDraft }[];
+  /** True when late start times were needed to fit everything. */
+  usedLate: boolean;
+}
+
+/**
+ * Schedules every bracket's games into the bracket days. A game starts only
+ * after both games feeding it have finished, never double-books a field, and
+ * keeps the winner's path within the daily game cap. Late start times are a
+ * fallback: they are used only when the brackets don't fit without them.
+ */
+export function scheduleBrackets(
+  brackets: { name: string; drafts: BracketGameDraft[] }[],
+  opts: BracketSchedulingOptions,
+): BracketScheduleResult {
+  const regular = placeBrackets(brackets, opts, false);
+  if (regular.unscheduled.length === 0 || opts.lateTimes.length === 0) return regular;
+  const withLate = placeBrackets(brackets, opts, true);
+  return withLate.unscheduled.length <= regular.unscheduled.length ? withLate : regular;
+}
+
+function placeBrackets(
+  brackets: { name: string; drafts: BracketGameDraft[] }[],
+  opts: BracketSchedulingOptions,
+  allowLate: boolean,
+): BracketScheduleResult {
+  const tz = opts.timeZone ?? DEFAULT_TZ;
+  const gameMs = opts.gameMinutes * 60000;
+  const lateSet = new Set(opts.lateTimes);
+  const times = [...opts.times, ...(allowLate ? opts.lateTimes : [])].sort();
+  const slots = opts.days
+    .flatMap((day) => times.map((time) => ({ day, iso: zonedToIso(day, time, tz), late: lateSet.has(time) && !opts.times.includes(time) })))
+    .sort((a, b) => a.iso.localeCompare(b.iso));
+
+  const fieldsUsed = new Map<string, Set<string>>();
+  const occupyField = (iso: string, field: string) => {
+    if (!fieldsUsed.has(iso)) fieldsUsed.set(iso, new Set());
+    fieldsUsed.get(iso)!.add(field);
+  };
+  // Existing games per team per day, and their fields.
+  const existingPerDay = new Map<string, number>();
+  for (const g of opts.existing ?? []) {
+    occupyField(g.startsAt, g.field);
+    const day = localDateKey(g.startsAt, tz);
+    for (const t of [g.homeTeamId, g.awayTeamId]) if (t) existingPerDay.set(`${t}|${day}`, (existingPerDay.get(`${t}|${day}`) ?? 0) + 1);
+  }
+
+  // Order: by round, then interleave brackets so no bracket hogs the fields.
+  const queue = brackets
+    .flatMap((b, bi) => b.drafts.map((d, di) => ({ bracket: b.name, bi, di, draft: d })))
+    .sort((a, b) => a.draft.round - b.draft.round || a.di - b.di || a.bi - b.bi);
+
+  // For each placed game: when it ends, its day, and how many games the winner has played that day.
+  const done = new Map<string, { endMs: number; day: string; dayCount: number }>();
+  const feedersOf = new Map<string, string[]>();
+  for (const b of brackets) {
+    for (const d of b.drafts) {
+      if (d.winnerTo) {
+        const k = `${b.name}|${d.winnerTo.key}`;
+        feedersOf.set(k, [...(feedersOf.get(k) ?? []), `${b.name}|${d.key}`]);
+      }
+    }
+  }
+
+  const placed: PlacedBracketGame[] = [];
+  const unscheduled: BracketScheduleResult['unscheduled'] = [];
+  for (const item of queue) {
+    const key = `${item.bracket}|${item.draft.key}`;
+    const feeders = (feedersOf.get(key) ?? []).map((f) => done.get(f));
+    if (feeders.some((f) => !f)) {
+      unscheduled.push({ bracket: item.bracket, draft: item.draft });
+      continue;
+    }
+    const earliest = Math.max(0, ...feeders.map((f) => f!.endMs));
+    const known = [item.draft.homeTeamId, item.draft.awayTeamId].filter(Boolean) as string[];
+    let chosen: { slot: (typeof slots)[number]; field: string; dayCount: number } | null = null;
+    for (const slot of slots) {
+      if (new Date(slot.iso).getTime() < earliest) continue;
+      const fromFeeders = Math.max(0, ...feeders.map((f) => (f!.day === slot.day ? f!.dayCount : 0)));
+      const fromExisting = Math.max(0, ...known.map((t) => existingPerDay.get(`${t}|${slot.day}`) ?? 0));
+      const dayCount = Math.max(fromFeeders, fromExisting) + 1;
+      if (dayCount > opts.maxGamesPerTeamPerDay) continue;
+      const used = fieldsUsed.get(slot.iso);
+      const field = opts.fields.find((f) => !used?.has(f));
+      if (!field) continue;
+      chosen = { slot, field, dayCount };
+      break;
+    }
+    if (!chosen) {
+      unscheduled.push({ bracket: item.bracket, draft: item.draft });
+      continue;
+    }
+    occupyField(chosen.slot.iso, chosen.field);
+    done.set(key, { endMs: new Date(chosen.slot.iso).getTime() + gameMs, day: chosen.slot.day, dayCount: chosen.dayCount });
+    placed.push({ bracket: item.bracket, draft: item.draft, field: chosen.field, startsAt: chosen.slot.iso, late: chosen.slot.late });
+  }
+  return { placed, unscheduled, usedLate: placed.some((p) => p.late) };
 }
