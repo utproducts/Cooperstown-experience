@@ -3,11 +3,11 @@ import { View } from 'react-native';
 
 import { ImageField, useImageUpload } from '@/components/image-upload';
 import { Sheet } from '@/components/sheet';
-import { SiteMap, type SiteMapImage } from '@/components/site-map';
+import { SiteMap } from '@/components/site-map';
 import { Badge, Button, Caption, Card, Divider, ErrorNote, Field, H1, H2, ListItem, Row, Screen, Segmented, confirmAction, type IconName } from '@/components/ui';
 import { useBackend } from '@/data';
 import type { Place, PlaceKind } from '@/data/types';
-import { usePlaces, useVenueSetting } from '@/data/venue';
+import { usePlaces, useSiteMap } from '@/data/venue';
 import { ON_MAP, onMap, PLACE_KINDS } from '@/lib/venue';
 
 const ALL_KINDS = Object.keys(PLACE_KINDS) as PlaceKind[];
@@ -32,7 +32,7 @@ const blank = (kind: PlaceKind): Omit<Place, 'id'> => ({
 export default function PlacesAdmin() {
   const backend = useBackend();
   const places = usePlaces();
-  const { value: map, refresh: refreshMap } = useVenueSetting<SiteMapImage>('site_map');
+  const { value: map, refresh: refreshMap, uploaded } = useSiteMap();
   const up = useImageUpload();
   const [kind, setKind] = useState<PlaceKind>('parking');
   const [editing, setEditing] = useState<(Omit<Place, 'id'> & { id?: string }) | null>(null);
@@ -44,9 +44,11 @@ export default function PlacesAdmin() {
       <H1>Site map & places</H1>
       <Card>
         <H2 style={{ fontSize: 18 }}>Site map picture</H2>
-        <Caption>Upload the park’s own site map (a clear, top-down picture works best). Then place a pin for each spot below.</Caption>
+        <Caption>
+          {uploaded ? 'Your uploaded site map.' : 'Showing the Village’s campus map that comes with the app.'} Upload a newer one any time (a clear, top-down picture works best), then place a pin for each spot below.
+        </Caption>
         <Button
-          title={map ? 'Replace site map' : 'Upload site map'}
+          title={uploaded ? 'Replace site map' : 'Upload a new site map'}
           icon="cloud-upload"
           small
           loading={up.busy}

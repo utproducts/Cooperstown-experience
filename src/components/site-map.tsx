@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 
 import { C, R, S } from '@/constants/theme';
@@ -60,7 +60,8 @@ export function SiteMap({
         {boxWidth > 0 && (
           <ScrollView horizontal={zoom > 1} scrollEnabled={zoom > 1} showsHorizontalScrollIndicator={false} bounces={false}>
             <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled bounces={false}>
-              <Pressable onPress={place} disabled={!onPlace} style={{ width, height: imgHeight }}>
+              {/* Only staff placing a pin tap the map itself; otherwise it's a plain picture so the pins stay tappable. */}
+              <Surface onPress={onPlace ? place : undefined} style={{ width, height: imgHeight }}>
                 <Image source={source} style={{ width, height: imgHeight }} resizeMode="cover" />
                 {pinned.map((p) => {
                   const k = PLACE_KINDS[p.kind];
@@ -87,7 +88,7 @@ export function SiteMap({
                       </Text>
                     </View>
                   ))}
-              </Pressable>
+              </Surface>
             </ScrollView>
           </ScrollView>
         )}
@@ -102,6 +103,16 @@ export function SiteMap({
       </View>
       {onPlace ? <Caption style={{ color: C.red, fontWeight: '700' }}>Tap the map where the pin goes.</Caption> : null}
     </View>
+  );
+}
+
+function Surface({ onPress, style, children }: { onPress?: (e: GestureResponderEvent) => void; style: { width: number; height: number }; children: ReactNode }) {
+  return onPress ? (
+    <Pressable onPress={onPress} style={style}>
+      {children}
+    </Pressable>
+  ) : (
+    <View style={style}>{children}</View>
   );
 }
 

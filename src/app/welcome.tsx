@@ -4,7 +4,9 @@ import { Linking, Platform, View } from 'react-native';
 
 import { Body, Button, Caption, Card, ErrorNote, Field, H2, Hero, Icon, Row, Screen, Stack } from '@/components/ui';
 import { C, S } from '@/constants/theme';
+import { BrandLogo } from '@/components/brand';
 import { useAuth } from '@/data';
+import { useParkPhoto } from '@/data/venue';
 import type { Role } from '@/data/types';
 
 // The full demo (sample data, every screen, parent/director switch), linked from the live app's sign-in screen.
@@ -25,6 +27,7 @@ const FEATURES = [
 
 export default function Welcome() {
   const { backend } = useAuth();
+  const photo = useParkPhoto(0);
   const { next } = useLocalSearchParams<{ next?: string }>();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -53,10 +56,15 @@ export default function Welcome() {
 
   return (
     <Screen>
+      <View style={{ alignItems: 'center', paddingVertical: S.sm }}>
+        <BrandLogo height={92} />
+      </View>
       <Hero
-        eyebrow="12U Youth Baseball · Cooperstown, NY"
-        title="The Cooperstown Experience"
-        subtitle="Everything your family and team need for the week of a lifetime — in one app.">
+        image={photo}
+        tall
+        eyebrow="12U Youth Baseball"
+        title="Your week at the Village"
+        subtitle="Everything your family and team need for the week of a lifetime, in one app.">
         <Stack gap={S.sm} style={{ marginTop: S.md }}>
           {FEATURES.map((f) => (
             <Row key={f.text}>

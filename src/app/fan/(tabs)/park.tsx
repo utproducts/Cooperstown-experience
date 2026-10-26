@@ -1,9 +1,12 @@
 import { router } from 'expo-router';
 
+import { View } from 'react-native';
+
+import { BrandLogo } from '@/components/brand';
 import { SectionTitle, TileGrid, type Tile } from '@/components/park-ui';
 import { Button, Caption, Card, Hero, Row, Screen } from '@/components/ui';
 import { DemoRoleSwitch } from '@/components/demo-role-switch';
-import { C } from '@/constants/theme';
+import { C, S } from '@/constants/theme';
 import { usePlaces, useParkPhoto } from '@/data/venue';
 import { useFanData } from '@/data/fan';
 import { formatDay, to12h, zoneLabel } from '@/lib/time';
@@ -44,7 +47,11 @@ export default function ParkHub() {
   return (
     <Screen refreshing={places.loading} onRefresh={places.refresh}>
       <DemoRoleSwitch />
-      <Hero image={photo} tall eyebrow="Cooperstown All Star Village" title="The Park" subtitle="Your week, your way: get around, eat well, and don’t miss a moment." />
+      <Hero image={photo} tall title="The Park" subtitle="Your week, your way: get around, eat well, and don’t miss a moment.">
+        <View style={{ position: 'absolute', top: S.lg, left: S.lg }}>
+          <BrandLogo height={48} badge />
+        </View>
+      </Hero>
       {ceremony && (
         <Card style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0' }}>
           <Row style={{ justifyContent: 'space-between' }}>

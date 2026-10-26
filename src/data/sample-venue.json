@@ -1,54 +1,397 @@
 {
-  "note": "Sample venue for demo mode only. Positions match assets/images/sample-site-map.png (drawn by scripts/draw-sample-map.mjs). The real map, pins and details are entered by staff.",
+  "note": "Demo venue for Cooperstown All Star Village. Pins sit on assets/images/asv-site-map.jpg (the Village’s campus map) and follow its legend. Staff enter the live venue in Park & venue.",
   "places": [
-    { "kind": "parking", "name": "Main Lot", "x": 0.14, "y": 0.86, "description": "Main family parking. Follow the signs from the entrance; the check-in tent is a short walk up the path." },
-    { "kind": "parking", "name": "Lot B (overflow)", "x": 0.52, "y": 0.9, "description": "Overflow parking when the Main Lot is full. Trolley stop at the lot entrance." },
-    { "kind": "parking", "name": "Bus & RV Lot", "x": 0.86, "y": 0.86, "description": "Team buses and RVs." },
-    { "kind": "checkin", "name": "Check-in Tent", "x": 0.24, "y": 0.7, "description": "Arrival day check-in. Bring each player’s QR pass from the app. Uniforms and wristbands are handed out here." },
-    { "kind": "trolley", "name": "Trolley stop: Main Lot", "x": 0.2, "y": 0.8, "hours": "Every 15 min, 7 AM–11 PM ET", "description": "The trolley loops the park so nobody has to climb the big hills: Main Lot → Fields 1–6 → Bunkhouse Village → Fields 7–12." },
-    { "kind": "trolley", "name": "Trolley stop: Fields 1–6", "x": 0.36, "y": 0.45, "hours": "Every 15 min, 7 AM–11 PM ET", "description": "Top of the first hill, by Field 3." },
-    { "kind": "trolley", "name": "Trolley stop: Bunkhouse Village", "x": 0.55, "y": 0.18, "hours": "Every 15 min, 7 AM–11 PM ET", "description": "Up the steepest hill. Ride up, walk down." },
-    { "kind": "trolley", "name": "Trolley stop: Fields 7–12", "x": 0.72, "y": 0.5, "hours": "Every 15 min, 7 AM–11 PM ET", "description": "Between Fields 9 and 10." },
-    { "kind": "field", "name": "Field 1", "x": 0.1, "y": 0.4 },
-    { "kind": "field", "name": "Field 2", "x": 0.2, "y": 0.4 },
-    { "kind": "field", "name": "Field 3", "x": 0.3, "y": 0.4 },
-    { "kind": "field", "name": "Field 4", "x": 0.1, "y": 0.56 },
-    { "kind": "field", "name": "Field 5", "x": 0.2, "y": 0.56 },
-    { "kind": "field", "name": "Field 6", "x": 0.3, "y": 0.56 },
-    { "kind": "field", "name": "Field 7", "x": 0.62, "y": 0.4 },
-    { "kind": "field", "name": "Field 8", "x": 0.72, "y": 0.4 },
-    { "kind": "field", "name": "Field 9", "x": 0.82, "y": 0.4 },
-    { "kind": "field", "name": "Field 10", "x": 0.62, "y": 0.6 },
-    { "kind": "field", "name": "Field 11", "x": 0.72, "y": 0.6 },
-    { "kind": "field", "name": "Field 12", "x": 0.82, "y": 0.6 },
-    { "kind": "bunkhouse", "name": "Bunkhouse Row A", "x": 0.38, "y": 0.1, "description": "Bunkhouses A1–A12." },
-    { "kind": "bunkhouse", "name": "Bunkhouse Row B", "x": 0.5, "y": 0.1, "description": "Bunkhouses B1–B12." },
-    { "kind": "bunkhouse", "name": "Bunkhouse Row C", "x": 0.62, "y": 0.1, "description": "Bunkhouses C1–C12." },
-    { "kind": "bunkhouse", "name": "Bunkhouse Row D", "x": 0.74, "y": 0.1, "description": "Bunkhouses D1–D12." },
-    { "kind": "food", "name": "Main Concessions", "x": 0.46, "y": 0.5, "hours": "7 AM–10 PM ET", "description": "Order in the app and we bring it to your dugout." },
-    { "kind": "restaurant", "name": "The Clubhouse", "x": 0.44, "y": 0.66, "hours": "11 AM–10 PM ET", "description": "The original sit-down spot at the park: burgers, wings and the big screen.", "takesReservations": true },
-    { "kind": "restaurant", "name": "New Restaurant", "x": 0.56, "y": 0.74, "hours": "11 AM–11 PM ET", "description": "The new restaurant on the hill. Sample name, staff set the real one.", "takesReservations": true },
-    { "kind": "vendor", "name": "Home Run Dugout", "x": 0.88, "y": 0.22, "hours": "10 AM–10 PM ET", "description": "Topgolf-style hitting bays: swing for targets, compete with your team." },
-    { "kind": "vendor", "name": "Monster Milkshake", "x": 0.5, "y": 0.58, "hours": "11 AM–10 PM ET", "description": "Over-the-top milkshakes piled high with candy, cookies and cake." },
-    { "kind": "vendor", "name": "Pro Cards & Jerseys Trailer", "x": 0.4, "y": 0.76, "hours": "10 AM–8 PM ET", "description": "Real baseball cards and jerseys of pro players." },
-    { "kind": "vendor", "name": "Custom Apparel", "x": 0.33, "y": 0.72, "hours": "9 AM–8 PM ET", "description": "Custom shirts and hats printed on site with your team name." },
-    { "kind": "vendor", "name": "Glossy Finish", "x": 0.6, "y": 0.8, "hours": "10 AM–8 PM ET", "description": "On-site vendor. Staff add the details." },
-    { "kind": "restroom", "name": "Restrooms: Fields 1–6", "x": 0.2, "y": 0.48 },
-    { "kind": "restroom", "name": "Restrooms: Fields 7–12", "x": 0.72, "y": 0.5 },
-    { "kind": "first_aid", "name": "First Aid", "x": 0.28, "y": 0.64, "description": "Athletic trainers on duty during games." },
-    { "kind": "info", "name": "Info & Pro Shop", "x": 0.36, "y": 0.66, "hours": "8 AM–9 PM ET", "description": "Questions, lost and found, and official apparel pickup." }
+    {
+      "kind": "field",
+      "name": "Field 1",
+      "x": 0.924,
+      "y": 0.435
+    },
+    {
+      "kind": "field",
+      "name": "Field 2",
+      "x": 0.865,
+      "y": 0.533
+    },
+    {
+      "kind": "field",
+      "name": "Field 3",
+      "x": 0.736,
+      "y": 0.43
+    },
+    {
+      "kind": "field",
+      "name": "Field 4",
+      "x": 0.757,
+      "y": 0.546
+    },
+    {
+      "kind": "field",
+      "name": "Field 5",
+      "x": 0.633,
+      "y": 0.45
+    },
+    {
+      "kind": "field",
+      "name": "Field 6",
+      "x": 0.653,
+      "y": 0.564
+    },
+    {
+      "kind": "field",
+      "name": "Field 7",
+      "x": 0.545,
+      "y": 0.619
+    },
+    {
+      "kind": "field",
+      "name": "Field 8",
+      "x": 0.451,
+      "y": 0.673
+    },
+    {
+      "kind": "field",
+      "name": "Field 9",
+      "x": 0.67,
+      "y": 0.663
+    },
+    {
+      "kind": "field",
+      "name": "Field 10",
+      "x": 0.446,
+      "y": 0.831
+    },
+    {
+      "kind": "field",
+      "name": "Field 11",
+      "x": 0.612,
+      "y": 0.792
+    },
+    {
+      "kind": "field",
+      "name": "Field 12",
+      "x": 0.519,
+      "y": 0.836
+    },
+    {
+      "kind": "parking",
+      "name": "Parking Lot A",
+      "x": 0.331,
+      "y": 0.339,
+      "description": "Off the main entrance on Route 205, closest to the hotel and restaurants."
+    },
+    {
+      "kind": "parking",
+      "name": "Parking Lot B",
+      "x": 0.476,
+      "y": 0.326,
+      "description": "Next to Lot A, at the top of the path down to the fields."
+    },
+    {
+      "kind": "parking",
+      "name": "Parking Lot C",
+      "x": 0.611,
+      "y": 0.299,
+      "description": "Along Route 205 above Fields 3–6."
+    },
+    {
+      "kind": "parking",
+      "name": "Parking Lot D",
+      "x": 0.776,
+      "y": 0.352,
+      "description": "Closest lot to Fields 1 and 2."
+    },
+    {
+      "kind": "parking",
+      "name": "Parking Lot E",
+      "x": 0.481,
+      "y": 0.176,
+      "description": "The big lot across Route 205. Shuttle stops along the lot."
+    },
+    {
+      "kind": "parking",
+      "name": "Hotel Parking",
+      "x": 0.204,
+      "y": 0.316,
+      "description": "For hotel guests."
+    },
+    {
+      "kind": "trolley",
+      "name": "Shuttle stop 1",
+      "x": 0.241,
+      "y": 0.204,
+      "description": "Shuttles loop the campus so nobody has to climb the big hills."
+    },
+    {
+      "kind": "trolley",
+      "name": "Shuttle stop 2",
+      "x": 0.494,
+      "y": 0.216,
+      "description": "Shuttles loop the campus so nobody has to climb the big hills."
+    },
+    {
+      "kind": "trolley",
+      "name": "Shuttle stop 3",
+      "x": 0.773,
+      "y": 0.232,
+      "description": "Shuttles loop the campus so nobody has to climb the big hills."
+    },
+    {
+      "kind": "trolley",
+      "name": "Shuttle stop 4",
+      "x": 0.124,
+      "y": 0.334,
+      "description": "Shuttles loop the campus so nobody has to climb the big hills."
+    },
+    {
+      "kind": "trolley",
+      "name": "Shuttle stop 5",
+      "x": 0.514,
+      "y": 0.365,
+      "description": "Shuttles loop the campus so nobody has to climb the big hills."
+    },
+    {
+      "kind": "trolley",
+      "name": "Shuttle stop 6",
+      "x": 0.413,
+      "y": 0.389,
+      "description": "Shuttles loop the campus so nobody has to climb the big hills."
+    },
+    {
+      "kind": "info",
+      "name": "Information",
+      "x": 0.396,
+      "y": 0.382,
+      "description": "Information and directory."
+    },
+    {
+      "kind": "food",
+      "name": "Food & beverage 1",
+      "x": 0.381,
+      "y": 0.443
+    },
+    {
+      "kind": "food",
+      "name": "Food & beverage 2",
+      "x": 0.463,
+      "y": 0.479
+    },
+    {
+      "kind": "food",
+      "name": "Food & beverage 3",
+      "x": 0.237,
+      "y": 0.486
+    },
+    {
+      "kind": "food",
+      "name": "Food & beverage 4",
+      "x": 0.696,
+      "y": 0.497
+    },
+    {
+      "kind": "food",
+      "name": "Food & beverage 5",
+      "x": 0.514,
+      "y": 0.528
+    },
+    {
+      "kind": "food",
+      "name": "Food & beverage 6",
+      "x": 0.559,
+      "y": 0.702
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 1",
+      "x": 0.165,
+      "y": 0.367
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 2",
+      "x": 0.376,
+      "y": 0.426
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 3",
+      "x": 0.295,
+      "y": 0.454
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 4",
+      "x": 0.2,
+      "y": 0.508
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 5",
+      "x": 0.433,
+      "y": 0.541
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 6",
+      "x": 0.694,
+      "y": 0.481
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 7",
+      "x": 0.615,
+      "y": 0.518
+    },
+    {
+      "kind": "restroom",
+      "name": "Restrooms 8",
+      "x": 0.577,
+      "y": 0.68
+    },
+    {
+      "kind": "first_aid",
+      "name": "Medical / Infirmary",
+      "x": 0.273,
+      "y": 0.492
+    },
+    {
+      "kind": "first_aid",
+      "name": "Defibrillator (AED)",
+      "x": 0.365,
+      "y": 0.444
+    },
+    {
+      "kind": "first_aid",
+      "name": "Defibrillator (AED), Fields 7–9",
+      "x": 0.517,
+      "y": 0.58
+    },
+    {
+      "kind": "other",
+      "name": "Natural Lawn Amphitheater",
+      "x": 0.556,
+      "y": 0.404
+    },
+    {
+      "kind": "bunkhouse",
+      "name": "Player Village",
+      "x": 0.233,
+      "y": 0.543,
+      "description": "Player bunkhouses. Your team’s bunkhouse is on the Player tab once staff assign it."
+    },
+    {
+      "kind": "restaurant",
+      "name": "The Clubhouse",
+      "hours": "11 AM–10 PM ET",
+      "description": "The original sit-down spot at the park: burgers, wings and the big screen.",
+      "takesReservations": true
+    },
+    {
+      "kind": "restaurant",
+      "name": "New Restaurant",
+      "hours": "11 AM–11 PM ET",
+      "description": "The new restaurant with a deck over the fields. Staff set its name and hours.",
+      "takesReservations": true,
+      "imageUrl": "sample:asv-deck"
+    },
+    {
+      "kind": "vendor",
+      "name": "Home Run Dugout",
+      "hours": "10 AM–10 PM ET",
+      "description": "Topgolf-style hitting bays: swing for targets, compete with your team."
+    },
+    {
+      "kind": "vendor",
+      "name": "Monster Milkshake",
+      "hours": "11 AM–10 PM ET",
+      "description": "Over-the-top milkshakes piled high with candy, cookies and cake."
+    },
+    {
+      "kind": "vendor",
+      "name": "Pro Cards & Jerseys Trailer",
+      "hours": "10 AM–8 PM ET",
+      "description": "Real baseball cards and jerseys of pro players."
+    },
+    {
+      "kind": "vendor",
+      "name": "Custom Apparel",
+      "hours": "9 AM–8 PM ET",
+      "description": "Custom shirts and hats printed on site with your team name."
+    },
+    {
+      "kind": "vendor",
+      "name": "Glossy Finish",
+      "hours": "10 AM–8 PM ET",
+      "description": "On-site vendor. Staff add the details."
+    }
   ],
   "around": [
-    { "kind": "attraction", "name": "National Baseball Hall of Fame and Museum", "address": "Main Street, Cooperstown, NY", "website": "https://baseballhall.org", "description": "The heart of baseball history: plaques, artifacts and exhibits. Plan a few hours." },
-    { "kind": "attraction", "name": "Doubleday Field", "address": "Main Street, Cooperstown, NY", "description": "The historic ballpark a short walk from the Hall of Fame." },
-    { "kind": "attraction", "name": "Main Street Cooperstown", "address": "Cooperstown, NY", "description": "Baseball card shops, bat makers, souvenirs, ice cream and pizza." },
-    { "kind": "attraction", "name": "Otsego Lake", "address": "Cooperstown, NY", "description": "Boat tours, swimming and sunsets at the north end of Main Street." },
-    { "kind": "attraction", "name": "The Farmers’ Museum", "address": "Cooperstown, NY", "description": "A working 1800s village with a hand-carved carousel." },
-    { "kind": "attraction", "name": "Fenimore Art Museum", "address": "Cooperstown, NY", "description": "American art and folk art on the shore of Otsego Lake." },
-    { "kind": "attraction", "name": "Glimmerglass State Park", "address": "Cooperstown, NY", "description": "Beach, hiking and picnics at the top of the lake." },
-    { "kind": "attraction", "name": "Fly Creek Cider Mill", "address": "Fly Creek, NY", "description": "Fresh cider, fudge and tastings in a historic mill." },
-    { "kind": "attraction", "name": "Howe Caverns", "address": "Howes Cave, NY", "description": "Underground boat ride through limestone caves. A good rain-day trip." },
-    { "kind": "lodging", "name": "Sample Hotel (Oneonta)", "address": "Oneonta, NY", "phone": "", "website": "", "description": "Sample listing for the demo. Staff add the real hotels, inns and rentals nearby." },
-    { "kind": "lodging", "name": "Sample Inn (Cooperstown)", "address": "Cooperstown, NY", "description": "Sample listing for the demo." }
+    {
+      "kind": "lodging",
+      "name": "Country Inn (on site)",
+      "address": "Cooperstown All Star Village",
+      "description": "Rooms right at the Village, behind the entrance sign.",
+      "imageUrl": "sample:asv-country-inn"
+    },
+    {
+      "kind": "attraction",
+      "name": "National Baseball Hall of Fame and Museum",
+      "address": "Main Street, Cooperstown, NY",
+      "website": "https://baseballhall.org",
+      "description": "The heart of baseball history: plaques, artifacts and exhibits. Plan a few hours."
+    },
+    {
+      "kind": "attraction",
+      "name": "Doubleday Field",
+      "address": "Main Street, Cooperstown, NY",
+      "description": "The historic ballpark a short walk from the Hall of Fame."
+    },
+    {
+      "kind": "attraction",
+      "name": "Main Street Cooperstown",
+      "address": "Cooperstown, NY",
+      "description": "Baseball card shops, bat makers, souvenirs, ice cream and pizza."
+    },
+    {
+      "kind": "attraction",
+      "name": "Otsego Lake",
+      "address": "Cooperstown, NY",
+      "description": "Boat tours, swimming and sunsets at the north end of Main Street."
+    },
+    {
+      "kind": "attraction",
+      "name": "The Farmers’ Museum",
+      "address": "Cooperstown, NY",
+      "description": "A working 1800s village with a hand-carved carousel."
+    },
+    {
+      "kind": "attraction",
+      "name": "Fenimore Art Museum",
+      "address": "Cooperstown, NY",
+      "description": "American art and folk art on the shore of Otsego Lake."
+    },
+    {
+      "kind": "attraction",
+      "name": "Glimmerglass State Park",
+      "address": "Cooperstown, NY",
+      "description": "Beach, hiking and picnics at the top of the lake."
+    },
+    {
+      "kind": "attraction",
+      "name": "Fly Creek Cider Mill",
+      "address": "Fly Creek, NY",
+      "description": "Fresh cider, fudge and tastings in a historic mill."
+    },
+    {
+      "kind": "attraction",
+      "name": "Howe Caverns",
+      "address": "Howes Cave, NY",
+      "description": "Underground boat ride through limestone caves. A good rain-day trip."
+    },
+    {
+      "kind": "lodging",
+      "name": "More lodging coming soon",
+      "description": "Staff add hotels, inns and rentals nearby."
+    }
   ]
 }

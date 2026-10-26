@@ -2,10 +2,10 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { PlaceCard } from '@/components/park-ui';
-import { SiteMap, type SiteMapImage } from '@/components/site-map';
+import { SiteMap } from '@/components/site-map';
 import { Body, Caption, Card, H1, ListItem, Screen, Segmented, type IconName } from '@/components/ui';
 import type { PlaceKind } from '@/data/types';
-import { usePlaces, useVenueSetting } from '@/data/venue';
+import { usePlaces, useSiteMap } from '@/data/venue';
 import { onMap, PLACE_KINDS } from '@/lib/venue';
 
 // Opening the map for one of these explains what you're looking at.
@@ -20,7 +20,7 @@ const INTRO: Partial<Record<PlaceKind, { title: string; body: string }>> = {
 export default function ParkMap() {
   const params = useLocalSearchParams<{ kind?: PlaceKind; place?: string }>();
   const places = usePlaces();
-  const { value: map } = useVenueSetting<SiteMapImage>('site_map');
+  const { value: map } = useSiteMap();
   const [kind, setKind] = useState<PlaceKind | 'all'>(params.kind ?? 'all');
   const [selected, setSelected] = useState<string | null>(params.place ?? null);
 

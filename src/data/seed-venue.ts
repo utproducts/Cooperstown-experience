@@ -1,5 +1,5 @@
-// Demo-mode venue: the sample site map, places, vendors, restaurants and menus, shop and concessions, bunkhouses,
-// park rules, things to do and the skills competition. Positions and names come from sample-venue.json.
+// Demo-mode venue for Cooperstown All Star Village: the campus map with its places (sample-venue.json), plus sample
+// menus, shop and concessions, bunkhouse assignments, park rules and skills results.
 import { zonedToIso } from '../lib/time';
 import type { SeedTables } from './seed';
 import SAMPLE from './sample-venue.json';
@@ -17,6 +17,7 @@ interface SampleSpot {
   website?: string;
   phone?: string;
   address?: string;
+  imageUrl?: string;
   takesReservations?: boolean;
 }
 
@@ -31,7 +32,7 @@ const place = (s: SampleSpot, i: number): Place => ({
   website: s.website ?? '',
   phone: s.phone ?? '',
   address: s.address ?? '',
-  imageUrl: '',
+  imageUrl: s.imageUrl ?? '',
   takesReservations: !!s.takesReservations,
   sort: i,
   active: true,
@@ -106,7 +107,7 @@ export function buildVenueSeed({ eventId, arrival, teams, players }: { eventId: 
   const bunks = places.filter((p) => p.kind === 'bunkhouse');
   const team_lodging: TeamLodging[] = teams
     .filter((t) => t.eventId === eventId)
-    .map((t, i) => ({ id: t.id, teamId: t.id, placeId: bunks[i % bunks.length].id, room: `${bunks[i % bunks.length].name.slice(-1)}${Math.floor(i / bunks.length) + 1}`, notes: '' }));
+    .map((t, i) => ({ id: t.id, teamId: t.id, placeId: bunks[i % bunks.length].id, room: `Bunkhouse ${i + 1}`, notes: '' }));
 
   const skills_events: SkillsEvent[] = [
     { name: 'Around the Bases', unit: 'sec', better: 'low' as const, description: 'Home to home, fastest time wins.' },
@@ -132,8 +133,8 @@ export function buildVenueSeed({ eventId, arrival, teams, players }: { eventId: 
   );
 
   const venue_settings: VenueSetting[] = [
-    { id: 'site_map', value: { url: 'sample:site-map', width: 1600, height: 1100 } },
-    { id: 'photos', value: { hero: ['sample:hero-dusk', 'sample:hero-ball'] } },
+    { id: 'site_map', value: { url: 'sample:asv-site-map', width: 2000, height: 2000 } },
+    { id: 'photos', value: { hero: ['sample:asv-deck', 'sample:asv-country-inn'] } },
     { id: 'park_rules', value: SAMPLE_PARK_RULES },
   ];
 
