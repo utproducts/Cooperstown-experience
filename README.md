@@ -116,7 +116,7 @@ Directors can download a template from the import screen.
 
 - **Shareable preview:** `npm run build:preview` makes `dist-preview/`, a self-contained demo build that runs from any sub-path. It's used for the claude.ai preview link. It runs on demo data unless the Supabase variables are set at build time.
 
-- **Live web app:** https://utproducts.github.io/Cooperstown-experience/ runs on the Cooperstown database. `.github/workflows/pages.yml` runs the tests, builds with `scripts/build-pages.sh` and publishes the `gh-pages` branch on every push.
+- **Live web app:** https://utproducts.github.io/Cooperstown-experience/ runs on the Cooperstown database, and https://utproducts.github.io/Cooperstown-experience/demo/ is the full demo on sample data (every screen, with the parent/director switch), linked from the sign-in screen. `.github/workflows/pages.yml` runs the tests, builds both with `scripts/build-pages.sh` and publishes the `gh-pages` branch on every push.
 - **Web:** `npx expo export -p web` creates `dist/`. Host it anywhere static (Vercel, Netlify, Cloudflare Pages) with a SPA fallback to `index.html`, so links like `/follow/CODE` and `/director/...` resolve.
 - **iOS and Android:**
   ```bash

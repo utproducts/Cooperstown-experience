@@ -1,11 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 
 import { Body, Button, Caption, Card, ErrorNote, Field, H2, Hero, Icon, Row, Screen, Stack } from '@/components/ui';
 import { C, S } from '@/constants/theme';
 import { useAuth } from '@/data';
 import type { Role } from '@/data/types';
+
+// The full demo (sample data, every screen, parent/director switch), linked from the live app's sign-in screen.
+const DEMO_URL = process.env.EXPO_PUBLIC_DEMO_URL;
+
+function openDemo() {
+  if (!DEMO_URL) return;
+  if (Platform.OS === 'web') window.location.assign(DEMO_URL);
+  else Linking.openURL(DEMO_URL);
+}
 
 const FEATURES = [
   { icon: 'calendar' as const, text: 'Live game schedule, scores and brackets' },
@@ -57,6 +66,17 @@ export default function Welcome() {
           ))}
         </Stack>
       </Hero>
+
+      {DEMO_URL && !backend.demoSignIn ? (
+        <Card onPress={openDemo} style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0', flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+          <Icon name="flask" color="#8A6A00" size={22} />
+          <View style={{ flex: 1 }}>
+            <Body style={{ fontWeight: '700' }}>See the full demo</Body>
+            <Caption>Every parent and director screen on sample data, with a one-tap switch between the two.</Caption>
+          </View>
+          <Icon name="chevron-forward" color={C.muted} size={18} />
+        </Card>
+      ) : null}
 
       {backend.continueAsGuest && (
         <Card>
