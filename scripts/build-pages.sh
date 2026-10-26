@@ -27,7 +27,7 @@ EXPO_PUBLIC_ZXING_WASM_PATH=/Cooperstown-experience/zxing_reader.wasm \
   npx expo export -p web --output-dir "$DEMO_TMP" --clear
 mv "$DEMO_TMP" "$OUT/demo"
 cp "$OUT/index.html" "$OUT/live.html"
-# The QR reader for browsers without a built-in one (see src/lib/scanner-setup.web.ts).
+# The QR reader for browsers without a built-in one (see src/components/qr-scanner.web.tsx).
 cp node_modules/zxing-wasm/dist/reader/zxing_reader.wasm "$OUT/zxing_reader.wasm"
 cp "$OUT/demo/index.html" "$OUT/demo/app.html"
 

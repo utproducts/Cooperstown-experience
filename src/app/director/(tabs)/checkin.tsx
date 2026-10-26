@@ -1,4 +1,3 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -6,11 +5,11 @@ import { Badge, Body, Button, Caption, Card, Divider, Field, H1, H3, Icon, Progr
 import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
 import { useDirectorData } from '@/data/director';
+import { QrScanner } from '@/components/qr-scanner';
 import { TeamCheckinScreen } from '@/components/team-checkin';
 import type { CheckInResult } from '@/data/backend';
 import { parseCheckInPayload } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
-import '@/lib/scanner-setup';
 
 type Filter = 'pending' | 'all' | 'teams';
 
@@ -38,7 +37,6 @@ export default function CheckInTab() {
 function CheckIn({ header }: { header?: ReactNode }) {
   const { backend, profile } = useAuth();
   const d = useDirectorData();
-  const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; title: string; detail: string } | null>(null);
   const [query, setQuery] = useState('');
@@ -112,28 +110,16 @@ function CheckIn({ header }: { header?: ReactNode }) {
         <Progress value={d.players.length ? checked / d.players.length : 0} />
       </Card>
 
-      <Card style={{ padding: 0, overflow: 'hidden' }}>
-        {scanning && permission?.granted ? (
-          // The preview fills a fixed-height box (on the web, CameraView takes its size from its parent).
-          <View style={styles.camera}>
-            <CameraView
-              style={StyleSheet.absoluteFill}
-              facing="back"
-              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              onBarcodeScanned={({ data }) => onScan(data)}
-            />
-            <View pointerEvents="none" style={styles.reticle} />
-          </View>
+      <Card style={{ padding: scanning ? S.md : 0, overflow: 'hidden' }}>
+        {scanning ? (
+          <QrScanner onScan={onScan} onStop={() => setScanning(false)} />
         ) : (
           <View style={styles.cameraPlaceholder}>
             <Icon name="qr-code" size={48} color={C.white} />
             <Text style={{ color: C.white, fontWeight: '700' }}>Scan player QR codes</Text>
-            {permission && !permission.granted && !permission.canAskAgain && (
-              <Caption style={{ color: '#C9D4E5', textAlign: 'center' }}>Camera access is off. Enable it in Settings, or use manual check-in below.</Caption>
-            )}
           </View>
         )}
-        <View style={{ padding: S.lg, gap: S.md }}>
+        <View style={{ padding: scanning ? 0 : S.lg, paddingTop: S.md, gap: S.md }}>
           {result && (
             <View style={[styles.result, { backgroundColor: result.ok ? C.greenSoft : C.warnSoft }]}>
               <Icon name={result.ok ? 'checkmark-circle' : 'alert-circle'} size={28} color={result.ok ? C.green : C.warn} />
@@ -143,16 +129,7 @@ function CheckIn({ header }: { header?: ReactNode }) {
               </View>
             </View>
           )}
-          <Button
-            title={scanning ? 'Stop scanner' : 'Start scanner'}
-            icon={scanning ? 'stop-circle' : 'scan'}
-            variant={scanning ? 'secondary' : 'primary'}
-            onPress={async () => {
-              if (scanning) return setScanning(false);
-              const p = permission?.granted ? permission : await requestPermission();
-              if (p.granted) setScanning(true);
-            }}
-          />
+          {!scanning && <Button title="Start scanner" icon="scan" onPress={() => setScanning(true)} />}
         </View>
       </Card>
 
@@ -222,8 +199,6 @@ function CheckIn({ header }: { header?: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  camera: { width: '100%', height: 320 },
-  reticle: { position: 'absolute', top: 60, left: '50%', marginLeft: -100, width: 200, height: 200, borderWidth: 3, borderColor: C.red, borderRadius: R.lg },
   cameraPlaceholder: { height: 200, backgroundColor: C.navy, alignItems: 'center', justifyContent: 'center', gap: S.sm, padding: S.lg },
   result: { flexDirection: 'row', gap: S.md, alignItems: 'center', padding: S.md, borderRadius: R.md },
 });
