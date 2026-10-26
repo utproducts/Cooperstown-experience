@@ -5,6 +5,7 @@ import { Text, View } from 'react-native';
 
 import { GameCard } from '@/components/game-card';
 import { PlayerPassSheet } from '@/components/player-pass';
+import { TeamBag } from '@/components/uniform';
 import { Badge, Body, Button, Caption, Card, Divider, ErrorNote, Field, H1, H3, Row, Screen, Section, showMessage } from '@/components/ui';
 import { C, Fonts, S } from '@/constants/theme';
 import type { Team } from '@/data/types';
@@ -12,6 +13,7 @@ import { APP_URL, useBackend } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { randomToken } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
+import { sizeLine, uniformItems } from '@/lib/uniform';
 
 export default function TeamDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,6 +24,7 @@ export default function TeamDetail() {
   const invites = d.invites.filter((i) => i.teamId === id);
   const [pass, setPass] = useState<string | null>(null);
   const passPlayer = roster.find((p) => p.id === pass);
+  const items = uniformItems(d.event);
   const games = d.games.filter((g) => g.homeTeamId === id || g.awayTeamId === id);
   const [busy, setBusy] = useState(false);
 
@@ -102,6 +105,7 @@ export default function TeamDetail() {
                   <Caption>
                     {p.guardianName ?? 'No parent'} · {p.guardianEmail ?? 'no email'}
                   </Caption>
+                  <Caption style={{ color: C.navy }}>{sizeLine(p.uniform, items)}</Caption>
                 </View>
                 {p.checkedInAt ? <Badge label={`In ${formatTime(p.checkedInAt, d.event?.timezone)}`} tone="green" /> : <Badge label="Not in" tone="muted" />}
                 <Button title="QR pass" icon="qr-code" small variant="secondary" onPress={() => setPass(p.id)} />
@@ -109,12 +113,17 @@ export default function TeamDetail() {
             </View>
           ))}
         </Card>
-        <AddPlayer teamId={team.id} />
+        {roster.length > 0 && (
+          <Card>
+            <TeamBag players={roster} items={items} />
+          </Card>
+        )}
+        <AddPlayer teamId={team.id} items={items} />
       </Section>
 
       )}
 
-      {passPlayer && <PlayerPassSheet player={passPlayer} team={team} timeZone={d.event?.timezone} onClose={() => setPass(null)} />}
+      {passPlayer && <PlayerPassSheet key={passPlayer.id} player={passPlayer} team={team} items={items} timeZone={d.event?.timezone} onClose={() => setPass(null)} />}
 
       {backend.features.invites && (
       <Section title={`Invitations (${invites.length})`}>
@@ -143,10 +152,11 @@ export default function TeamDetail() {
 }
 
 /** Adds one player by hand; the database gives them a QR check-in pass. */
-function AddPlayer({ teamId }: { teamId: string }) {
+function AddPlayer({ teamId, items }: { teamId: string; items: string[] }) {
   const backend = useBackend();
   const blank = { firstName: '', lastName: '', jersey: '', parentName: '', parentEmail: '' };
   const [f, setF] = useState(blank);
+  const [sizes, setSizes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof blank) => (v: string) => setF((x) => ({ ...x, [k]: v }));
@@ -163,6 +173,13 @@ function AddPlayer({ teamId }: { teamId: string }) {
         </View>
       </Row>
       <Field label="Jersey #" value={f.jersey} onChangeText={set('jersey')} keyboardType="number-pad" />
+      <Row style={{ flexWrap: 'wrap' }}>
+        {items.map((item) => (
+          <View key={item} style={{ flexGrow: 1, minWidth: 90 }}>
+            <Field label={`${item} size`} placeholder="e.g. YL" value={sizes[item] ?? ''} onChangeText={(v) => setSizes((x) => ({ ...x, [item]: v }))} autoCapitalize="characters" />
+          </View>
+        ))}
+      </Row>
       <Field label="Parent name" value={f.parentName} onChangeText={set('parentName')} />
       <Field
         label="Parent email"
@@ -198,9 +215,11 @@ function AddPlayer({ teamId }: { teamId: string }) {
                 checkInToken: randomToken(16),
                 checkedInAt: null,
                 checkedInBy: null,
+                uniform: Object.fromEntries(Object.entries(sizes).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v)),
               },
             ]);
             setF(blank);
+            setSizes({});
           } catch (e) {
             setError((e as Error).message);
           } finally {

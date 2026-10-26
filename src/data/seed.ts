@@ -118,6 +118,8 @@ export function buildSeed(now = new Date()): SeedTables {
         checkedInAt: isDemoChild ? null : checkedIn ? zonedToIso(arrival, `${12 + Math.floor(rand() * 6)}:${String(Math.floor(rand() * 60)).padStart(2, '0')}`) : null,
         checkedInBy: checkedIn && !isDemoChild ? DEMO_USERS.director.id : null,
         externalId: null,
+        // 12U sizes; fixed by position so the sample data stays the same every time.
+        uniform: { Jersey: ['YM', 'YL', 'YL', 'YXL', 'AS', 'YL', 'YM', 'AM', 'YL', 'YXL', 'YL', 'AS'][(ti + p) % 12], Pants: ['YM', 'YL', 'YXL', 'YL', 'AS', 'YM'][(ti * 5 + p) % 6], Hat: ['S/M', 'M/L', 'S/M', 'S/M', 'M/L', 'L/XL'][(ti + p * 2) % 6] },
       });
     }
   });

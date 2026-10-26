@@ -177,6 +177,7 @@ export default function ImportScreen() {
             <Badge label={`${parsed.teams.filter((t) => t.coachName).length} coaches`} tone="navy" icon="clipboard" />
             {parsed.skipped > 0 && <Badge label={`${parsed.skipped} skipped`} tone="warn" />}
             {parsed.teamsOnly && <Badge label="Team-level export" tone="gold" />}
+            {parsed.sizeItems.length > 0 && <Badge label={`Sizes: ${parsed.sizeItems.join(', ')}`} tone="green" icon="shirt" />}
           </Row>
           {parsed.teamsOnly && (
             <Caption>One row per team: teams, organizations, hometowns and team reps are imported now; player rosters can be imported later from a registrations export.</Caption>

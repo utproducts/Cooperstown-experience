@@ -3,9 +3,11 @@ import { Pressable, View } from 'react-native';
 
 import { C, S } from '@/constants/theme';
 import { useAuth, useTable } from '@/data';
-import type { EventWeek, Team, TeamCheckin } from '@/data/types';
+import type { EventWeek, Player, Team, TeamCheckin } from '@/data/types';
 import { formatTime } from '@/lib/time';
+import { uniformItems } from '@/lib/uniform';
 
+import { TeamBag } from './uniform';
 import { Badge, Body, Button, Caption, Card, Divider, Field, H1, H3, Icon, Progress, Row, Screen, Segmented } from './ui';
 
 const DEFAULT_ITEMS = ['Roster verified', 'Waivers signed', 'Wristbands handed out', 'Lodging keys'];
@@ -19,6 +21,9 @@ export function checkinItems(event: EventWeek | null): string[] {
 /** Team-by-team arrival check-in: tick the week's list, add notes, mark the team checked in. */
 export function TeamCheckinScreen({ event, teams, header }: { event: EventWeek | null; teams: Team[]; header?: ReactNode }) {
   const checkins = useTable('team_checkins');
+  const teamIds = teams.map((t) => t.id);
+  // Rosters (when the database has them) give each team's uniform bag.
+  const players = useTable('players', { in: { column: 'teamId', values: teamIds.length ? teamIds : ['__none__'] } });
   const [filter, setFilter] = useState<'waiting' | 'all'>('waiting');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -55,7 +60,14 @@ export function TeamCheckinScreen({ event, teams, header }: { event: EventWeek |
         {shown.slice(0, 120).map((t, i) => (
           <View key={t.id}>
             {i > 0 && <Divider />}
-            <TeamRow team={t} event={event} checkin={byTeam.get(t.id) ?? null} open={open === t.id} onToggle={() => setOpen(open === t.id ? null : t.id)} />
+            <TeamRow
+              team={t}
+              event={event}
+              checkin={byTeam.get(t.id) ?? null}
+              roster={players.data.filter((p) => p.teamId === t.id)}
+              open={open === t.id}
+              onToggle={() => setOpen(open === t.id ? null : t.id)}
+            />
           </View>
         ))}
       </Card>
@@ -63,7 +75,21 @@ export function TeamCheckinScreen({ event, teams, header }: { event: EventWeek |
   );
 }
 
-function TeamRow({ team, event, checkin, open, onToggle }: { team: Team; event: EventWeek | null; checkin: TeamCheckin | null; open: boolean; onToggle: () => void }) {
+function TeamRow({
+  team,
+  event,
+  checkin,
+  roster,
+  open,
+  onToggle,
+}: {
+  team: Team;
+  event: EventWeek | null;
+  checkin: TeamCheckin | null;
+  roster: Player[];
+  open: boolean;
+  onToggle: () => void;
+}) {
   const { backend, profile } = useAuth();
   const items = checkinItems(event);
   const [ticked, setTicked] = useState<Record<string, boolean>>(checkin?.items ?? {});
@@ -115,6 +141,7 @@ function TeamRow({ team, event, checkin, open, onToggle }: { team: Team; event: 
               <Body>{item}</Body>
             </Pressable>
           ))}
+          {backend.features.rosters && <TeamBag players={roster} items={uniformItems(event)} />}
           <Field placeholder="Notes (optional)" value={notes} onChangeText={setNotes} />
           {checkin?.checkedInBy ? <Caption>Checked in by {checkin.checkedInBy}</Caption> : null}
           <Row style={{ flexWrap: 'wrap' }}>

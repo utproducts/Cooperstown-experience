@@ -9,6 +9,7 @@ import type { EventWeek } from '@/data/types';
 import { randomToken } from '@/lib/codes';
 import { DEFAULT_TZ, localDateKey, relativeTime } from '@/lib/time';
 import { generateSeasonWeeks, weekRange, weekStatus } from '@/lib/weeks';
+import { uniformItems } from '@/lib/uniform';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULTS = {
@@ -80,6 +81,7 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
     checkInWindow: event.checkInWindow,
     latitude: String(event.latitude),
     longitude: String(event.longitude),
+    uniformItems: uniformItems(event).join(', '),
   });
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -115,6 +117,12 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
       <Field label="Venue" value={form.venue} onChangeText={set('venue')} />
       <Field label="Address" value={form.address} onChangeText={set('address')} />
       <Field label="Check-in window" value={form.checkInWindow} onChangeText={set('checkInWindow')} />
+      <Field
+        label="Uniform items handed out at check-in"
+        value={form.uniformItems}
+        onChangeText={set('uniformItems')}
+        hint="Comma separated, e.g. Jersey, Pants, Hat. Each player gets a size for each; scanning a pass shows them."
+      />
       <Row>
         <View style={{ flex: 1 }}>
           <Field label="Latitude (weather)" value={form.latitude} onChangeText={set('latitude')} keyboardType="numbers-and-punctuation" />
@@ -139,6 +147,10 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
               checkInWindow: form.checkInWindow.trim(),
               latitude: Number(form.latitude) || DEFAULTS.latitude,
               longitude: Number(form.longitude) || DEFAULTS.longitude,
+              settings: {
+                ...(event.settings ?? {}),
+                uniformItems: [...new Set(form.uniformItems.split(',').map((x) => x.trim()).filter(Boolean))],
+              },
             });
             showMessage('Saved');
           } catch (e) {

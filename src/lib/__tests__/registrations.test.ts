@@ -98,3 +98,19 @@ describe('team-level export (one row per team)', () => {
     expect(r.teams[0]).toMatchObject({ coachName: 'Pat Coach', coachEmail: 'pat@aces.org', coachPhone: '555-0100' });
   });
 });
+
+describe('uniform sizes in the export', () => {
+  it('reads size questions into each player’s sizes, and keeps the jersey number separate', () => {
+    const csv = [
+      'Team,First Name,Last Name,Jersey Number,Parent 1 Email,Jersey Size,What is your player\'s pant size?,Hat Size',
+      'Storm (Tampa FL),Sam,Reed,7,mom@x.io,YL,YM,S/M',
+      'Storm (Tampa FL),Ava,Lee,12,dad@x.io,AM,,L/XL',
+    ].join('\n');
+    const r = parseRegistrations(csv);
+    expect(r.sizeItems).toEqual(['Jersey', 'Pants', 'Hat']);
+    const [sam, ava] = r.teams[0].players;
+    expect(sam.jerseyNumber).toBe('7');
+    expect(sam.uniform).toEqual({ Jersey: 'YL', Pants: 'YM', Hat: 'S/M' });
+    expect(ava.uniform).toEqual({ Jersey: 'AM', Hat: 'L/XL' });
+  });
+});

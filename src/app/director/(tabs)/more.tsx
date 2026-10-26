@@ -6,15 +6,24 @@ import { useAuth } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { toCsv } from '@/lib/csv';
 import { shareTextFile } from '@/lib/share-file';
+import { uniformItems } from '@/lib/uniform';
 
 export default function DirectorMore() {
   const { profile, backend } = useAuth();
   const d = useDirectorData();
 
   function exportCheckIns() {
+    const items = uniformItems(d.event);
     const csv = toCsv(
-      ['Team', 'Player', 'Jersey', 'Checked In', 'Checked In At'],
-      d.players.map((p) => [d.teams.find((t) => t.id === p.teamId)?.name, `${p.firstName} ${p.lastName}`, p.jerseyNumber, p.checkedInAt ? 'Yes' : 'No', p.checkedInAt]),
+      ['Team', 'Player', 'Jersey', ...items.map((i) => `${i} Size`), 'Checked In', 'Checked In At'],
+      d.players.map((p) => [
+        d.teams.find((t) => t.id === p.teamId)?.name,
+        `${p.firstName} ${p.lastName}`,
+        p.jerseyNumber,
+        ...items.map((i) => p.uniform?.[i] ?? ''),
+        p.checkedInAt ? 'Yes' : 'No',
+        p.checkedInAt,
+      ]),
     );
     shareTextFile('check-ins.csv', csv);
   }

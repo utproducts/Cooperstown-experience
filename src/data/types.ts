@@ -69,6 +69,8 @@ export interface Player {
   checkedInAt: string | null;
   checkedInBy: string | null;
   externalId: string | null;
+  /** Uniform sizes handed out at check-in, by item (the week's uniform items), e.g. { Jersey: 'YL', Hat: 'S/M' }. */
+  uniform?: Record<string, string>;
 }
 
 export type GameStatus = 'scheduled' | 'live' | 'final' | 'delayed' | 'postponed' | 'cancelled';

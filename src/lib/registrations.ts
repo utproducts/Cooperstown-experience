@@ -1,3 +1,4 @@
+import { sizeItemFromHeader } from './uniform';
 import { parseCsvObjects } from './csv';
 import { normalizeIsoDate } from './time';
 
@@ -115,6 +116,8 @@ export interface ImportedPlayer {
   guardianEmail: string | null;
   guardianPhone: string | null;
   externalId: string | null;
+  /** Uniform sizes from the export's size columns ("Jersey Size", "Pant size?"), by item. */
+  uniform: Record<string, string>;
 }
 
 export interface ImportedTeam {
@@ -147,6 +150,8 @@ export interface ImportResult {
   skipped: number;
   /** True for a team-level export (no player rows): teams and team reps only. */
   teamsOnly: boolean;
+  /** Uniform items the export has sizes for, e.g. ['Jersey', 'Pants']. */
+  sizeItems: string[];
 }
 
 const INACTIVE_STATUS = /cancel|withdraw|refund|declin|inactive|waitlist/i;
@@ -181,6 +186,11 @@ function cityStateFromTeamName(name: string): { city: string; state: string } {
 export function parseRegistrations(csv: string, override?: ColumnMapping): ImportResult {
   const { headers, records } = parseCsvObjects(csv);
   const mapping = { ...detectColumns(headers), ...override };
+  // Size questions ("Jersey Size", "What is your player's pant size?") become the player's uniform sizes.
+  const sizeColumns = headers
+    .filter((h) => !Object.values(mapping).includes(h))
+    .map((h) => [h, sizeItemFromHeader(h)] as const)
+    .filter((x): x is readonly [string, string] => !!x[1]);
   const issues: ImportIssue[] = [];
   const teams = new Map<string, ImportedTeam>();
   let skipped = 0;
@@ -271,6 +281,7 @@ export function parseRegistrations(csv: string, override?: ColumnMapping): Impor
       guardianEmail,
       guardianPhone: nullIfEmpty(get(rec, 'guardianPhone')) ?? nullIfEmpty(get(rec, 'phone')),
       externalId: nullIfEmpty(get(rec, 'memberId')),
+      uniform: Object.fromEntries(sizeColumns.map(([header, item]) => [item, (rec[header] ?? '').trim()]).filter(([, v]) => v)),
     });
   });
 
@@ -281,5 +292,6 @@ export function parseRegistrations(csv: string, override?: ColumnMapping): Impor
     rowCount: records.length,
     skipped,
     teamsOnly,
+    sizeItems: [...new Set(sizeColumns.map(([, item]) => item))],
   };
 }

@@ -6,10 +6,12 @@ import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { QrScanner } from '@/components/qr-scanner';
+import { TeamBag, UniformHandout } from '@/components/uniform';
 import { TeamCheckinScreen } from '@/components/team-checkin';
 import type { CheckInResult } from '@/data/backend';
 import { parseCheckInPayload } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
+import { sizeLine, uniformItems } from '@/lib/uniform';
 
 type Filter = 'pending' | 'all' | 'teams';
 
@@ -38,7 +40,8 @@ function CheckIn({ header }: { header?: ReactNode }) {
   const { backend, profile } = useAuth();
   const d = useDirectorData();
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; title: string; detail: string } | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; title: string; detail: string; uniform?: Record<string, string> } | null>(null);
+  const items = uniformItems(d.event);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('pending');
   const lastScan = useRef<{ value: string; at: number }>({ value: '', at: 0 });
@@ -61,8 +64,8 @@ function CheckIn({ header }: { header?: ReactNode }) {
     const who = `${r.player.firstName} ${r.player.lastName}`;
     const meta = [r.team?.name, r.player.jerseyNumber ? `#${r.player.jerseyNumber}` : null].filter(Boolean).join(' · ');
     return r.alreadyCheckedIn
-      ? { ok: false, title: `${who} was already checked in`, detail: `${meta} · at ${formatTime(r.player.checkedInAt!, tz)}` }
-      : { ok: true, title: `${who} checked in`, detail: meta };
+      ? { ok: false, title: `${who} was already checked in`, detail: `${meta} · at ${formatTime(r.player.checkedInAt!, tz)}`, uniform: r.player.uniform }
+      : { ok: true, title: `${who} checked in`, detail: meta, uniform: r.player.uniform };
   }
 
   async function onScan(value: string) {
@@ -87,6 +90,9 @@ function CheckIn({ header }: { header?: ReactNode }) {
       await backend.update('players', playerId, { checkedInAt: null, checkedInBy: null });
     } else {
       await backend.update('players', playerId, { checkedInAt: new Date().toISOString(), checkedInBy: profile?.id ?? null });
+      // Same as a scan: show what to hand them.
+      const p = d.players.find((x) => x.id === playerId);
+      if (p) setResult({ ok: true, title: `${p.firstName} ${p.lastName} checked in`, detail: [teamName(p.teamId), p.jerseyNumber ? `#${p.jerseyNumber}` : null].filter(Boolean).join(' · '), uniform: p.uniform ?? {} });
     }
   }
 
@@ -129,6 +135,7 @@ function CheckIn({ header }: { header?: ReactNode }) {
               </View>
             </View>
           )}
+          {result?.uniform && <UniformHandout uniform={result.uniform} items={items} />}
           {!scanning && <Button title="Start scanner" icon="scan" onPress={() => setScanning(true)} />}
         </View>
       </Card>
@@ -162,6 +169,7 @@ function CheckIn({ header }: { header?: ReactNode }) {
                   </Caption>
                 </Row>
                 <Progress value={roster.length ? done / roster.length : 0} color={done === roster.length ? C.green : C.navy} />
+                <TeamBag players={roster} items={items} />
               </View>
             );
           })}
@@ -181,6 +189,7 @@ function CheckIn({ header }: { header?: ReactNode }) {
                     {teamName(p.teamId)}
                     {p.checkedInAt ? ` · in at ${formatTime(p.checkedInAt, tz)}` : ''}
                   </Caption>
+                  <Caption style={{ color: C.navy }}>{sizeLine(p.uniform, items)}</Caption>
                 </View>
                 <Button
                   title={p.checkedInAt ? 'Undo' : 'Check in'}

@@ -7,7 +7,8 @@ import { weekRange } from '../lib/weeks';
 import { saveScore } from './services';
 import type { Profile, Role } from './types';
 
-const STORAGE_KEY = 'cxp-demo-v4';
+// v5: players have uniform sizes.
+const STORAGE_KEY = 'cxp-demo-v5';
 
 /**
  * In-memory backend with sample data, persisted to device storage. Used when

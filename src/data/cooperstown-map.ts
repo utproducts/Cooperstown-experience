@@ -276,9 +276,10 @@ export interface PlayerRow {
   checked_in_at: string | null;
   checked_in_by: string;
   external_id: string;
+  uniform?: Record<string, string>;
 }
 
-export const PLAYER_COLUMNS = 'id, team_id, first_name, last_name, jersey_number, guardian_name, guardian_email, guardian_phone, check_in_token, checked_in_at, checked_in_by, external_id';
+export const PLAYER_COLUMNS = 'id, team_id, first_name, last_name, jersey_number, guardian_name, guardian_email, guardian_phone, check_in_token, checked_in_at, checked_in_by, external_id, uniform';
 
 export function toPlayer(p: PlayerRow): Player {
   return {
@@ -295,6 +296,7 @@ export function toPlayer(p: PlayerRow): Player {
     checkedInAt: p.checked_in_at,
     checkedInBy: p.checked_in_by || null,
     externalId: p.external_id || null,
+    uniform: p.uniform ?? {},
   };
 }
 
@@ -339,6 +341,7 @@ export function toPlayerPatch(p: Partial<Player>): Record<string, unknown> {
   if (p.externalId !== undefined) row.external_id = p.externalId ?? '';
   if (p.checkedInAt !== undefined) row.checked_in_at = p.checkedInAt;
   if (p.checkedInBy !== undefined) row.checked_in_by = p.checkedInBy ?? '';
+  if (p.uniform !== undefined) row.uniform = Object.fromEntries(Object.entries(p.uniform ?? {}).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v));
   return row;
 }
 

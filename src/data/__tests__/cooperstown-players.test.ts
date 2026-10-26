@@ -85,7 +85,7 @@ describe('Cooperstown backend: players and QR check-in', () => {
         already = true;
         return out;
       }
-      if (c.url.pathname === '/rest/v1/players') return [{ ...ROW, checked_in_at: '2027-05-30T16:00:00Z', checked_in_by: 'Desk' }];
+      if (c.url.pathname === '/rest/v1/players') return [{ ...ROW, checked_in_at: '2027-05-30T16:00:00Z', checked_in_by: 'Desk', uniform: { Jersey: 'YL', Hat: 'S/M' } }];
       if (c.url.pathname === '/rest/v1/teams') return [{ id: 't1', week_id: 'w1', age_group: '12U', name: 'Storm', organization: '', city: '', state: 'FL', players: 12, coaches: 2 }];
       return [];
     };
@@ -93,6 +93,8 @@ describe('Cooperstown backend: players and QR check-in', () => {
     expect(calls.find((c) => c.url.pathname === '/rest/v1/rpc/check_in_player')!.body).toEqual({ p_token: ROW.check_in_token });
     expect(first.alreadyCheckedIn).toBe(false);
     expect(first.player.checkedInBy).toBe('Desk');
+    expect(first.player.uniform).toEqual({ Jersey: 'YL', Hat: 'S/M' });
+    expect(calls.find((c) => c.url.pathname === '/rest/v1/players')!.url.searchParams.get('select')).toContain('uniform');
     expect(first.team?.name).toBe('Storm');
     expect((await b.checkInByToken(ROW.check_in_token)).alreadyCheckedIn).toBe(true);
   });
