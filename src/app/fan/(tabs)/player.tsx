@@ -98,7 +98,7 @@ export default function PlayerPortal() {
             subtitle={event.address}
             onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${event.venue}, ${event.address}`)}`)}
           />
-          <ListItem icon="time" title={`Departure ${formatDay(event.endsOn)}`} subtitle="Bunkhouse check-out by 10:00 AM" />
+          <ListItem icon="time" title={`Departure ${formatDay(event.endsOn)}`} subtitle="Bunkhouse check-out by 10:00 AM ET" />
         </Card>
       )}
 

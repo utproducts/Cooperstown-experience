@@ -8,14 +8,11 @@ import { useBackend, useLiveQuery } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { planEventWeek, postWeekSchedule, seedBrackets, type WeekBuildSettings } from '@/data/services';
 import { fieldNames } from '@/lib/schedule';
-import { dateRange, formatDay } from '@/lib/time';
+import { dateRange, formatDay, to12h, zoneLabel } from '@/lib/time';
+import { TimeSelect } from '@/components/time-select';
 import { planSummary } from '@/lib/week-schedule';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$|^24:00$/;
-const to12h = (t: string) => {
-  const [h, m] = t.split(':').map(Number);
-  return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h % 24 < 12 ? 'AM' : 'PM'}`;
-};
 const when = (dateTime: string) => {
   const [date, time] = dateTime.split(' ');
   return `${formatDay(date)} ${to12h(time)}`;
@@ -92,7 +89,7 @@ function BuilderForWeek() {
   const invalid =
     !event ? 'Create the season’s weeks first under More → Weeks.'
     : d.teams.length < 2 ? 'Import this week’s teams first.'
-    : settings.days.some((x) => !TIME.test(x.start) || !TIME.test(x.end) || x.end <= x.start) ? 'Each day needs a first game and a later end time (24-hour, e.g. 08:00 and 22:00).'
+    : settings.days.some((x) => !TIME.test(x.start) || !TIME.test(x.end) || x.end <= x.start) ? 'Each day’s last game has to end after its first game starts.'
     : !settings.days.some((x) => x.pool) ? 'Choose at least one pool play day.'
     : !settings.days.some((x) => x.bracket) ? 'Choose at least one bracket day.'
     : !settings.brackets?.length ? 'Name at least one bracket.'
@@ -212,7 +209,9 @@ function BuilderForWeek() {
 
       <Card>
         <H2 style={{ fontSize: 18 }}>Days</H2>
-        <Caption>Bracket games start one slot after the last pool game, so the last pool day can also be a bracket day.</Caption>
+        <Caption>
+          First game and last game end, in Eastern Time (ET). Bracket games start one slot after the last pool game, so the last pool day can also be a bracket day.
+        </Caption>
         {dates.map((date, i) => (
           <View key={date} style={styles.dayRow}>
             <View style={{ minWidth: 110 }}>
@@ -223,15 +222,20 @@ function BuilderForWeek() {
               <Button title="Pool" small variant={days[i].pool ? 'dark' : 'secondary'} onPress={() => setDay(i, { pool: !days[i].pool })} />
               <Button title="Bracket" small variant={days[i].bracket ? 'dark' : 'secondary'} onPress={() => setDay(i, { bracket: !days[i].bracket })} />
             </Row>
-            <Row gap={6} style={{ flex: 1, minWidth: 180 }}>
-              <View style={{ flex: 1 }}>
-                <Field value={days[i].start} onChangeText={(v) => setDay(i, { start: v })} autoCapitalize="none" accessibilityLabel={`Day ${i + 1} first game`} />
-              </View>
-              <Caption>to</Caption>
-              <View style={{ flex: 1 }}>
-                <Field value={days[i].end} onChangeText={(v) => setDay(i, { end: v })} autoCapitalize="none" accessibilityLabel={`Day ${i + 1} last game ends`} />
-              </View>
-            </Row>
+            <View style={{ flexBasis: '100%', gap: 6 }}>
+              <Row gap={S.sm}>
+                <Caption style={styles.timeLabel}>First game</Caption>
+                <View style={{ flex: 1 }}>
+                  <TimeSelect value={days[i].start} onChange={(v) => setDay(i, { start: v })} max="23:30" accessibilityLabel={`Day ${i + 1} first game`} />
+                </View>
+              </Row>
+              <Row gap={S.sm}>
+                <Caption style={styles.timeLabel}>Last game ends</Caption>
+                <View style={{ flex: 1 }}>
+                  <TimeSelect value={days[i].end} onChange={(v) => setDay(i, { end: v })} min="00:30" accessibilityLabel={`Day ${i + 1} last game ends`} />
+                </View>
+              </Row>
+            </View>
           </View>
         ))}
       </Card>
@@ -286,9 +290,13 @@ function BuilderForWeek() {
             <H3>Bracket rounds</H3>
             {summary.bracketRounds.map((r) => (
               <Row key={r.label} style={styles.tableRow}>
-                <Text style={[styles.cellDay, { minWidth: 190 }]}>{r.label}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cellDay}>{r.label}</Text>
+                  <Caption>
+                    {r.from === r.to ? when(r.from) : `${when(r.from)} – ${when(r.to)}`} {zoneLabel(event.timezone)}
+                  </Caption>
+                </View>
                 <Text style={styles.cellNum}>{r.games}</Text>
-                <Caption style={{ flex: 1 }}>{r.from === r.to ? when(r.from) : `${when(r.from)} – ${when(r.to)}`}</Caption>
               </Row>
             ))}
             <Divider />
@@ -326,6 +334,7 @@ function BuilderForWeek() {
 const styles = StyleSheet.create({
   dayRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: S.md, paddingVertical: S.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
   fit: { padding: S.md, borderRadius: R.md, gap: 4 },
+  timeLabel: { width: 96 },
   tableRow: { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, gap: S.md },
   cellDay: { minWidth: 140, fontWeight: '600', color: C.ink },
   cellNum: { width: 36, textAlign: 'right', fontWeight: '800', color: C.navy, fontVariant: ['tabular-nums'] },

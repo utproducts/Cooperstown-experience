@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { GameEditor, GameEditorHint } from '@/components/game-editor';
 import { GamesByDay } from '@/components/schedule-views';
 import { Sheet } from '@/components/sheet';
+import { TimeSelect } from '@/components/time-select';
 import { Badge, Body, Button, Caption, ErrorNote, Field, H1, Row, Screen, Segmented, showMessage } from '@/components/ui';
 import { useBackend } from '@/data';
 import { useDirectorData } from '@/data/director';
@@ -107,7 +108,11 @@ function BulkDelay({
   const fields = [...new Set(games.map((g) => g.field))].sort();
   const [day, setDay] = useState(days.includes(today) ? today : days[0] ?? today);
   const [field, setField] = useState('all');
-  const [from, setFrom] = useState(localTimeKey(new Date().toISOString(), timeZone));
+  // Now, rounded down to the quarter hour.
+  const [from, setFrom] = useState(() => {
+    const [h, m] = localTimeKey(new Date().toISOString(), timeZone).split(':').map(Number);
+    return `${String(h).padStart(2, '0')}:${String(m - (m % 15)).padStart(2, '0')}`;
+  });
   const [minutes, setMinutes] = useState(60);
   const [reason, setReason] = useState('Weather delay');
   const [busy, setBusy] = useState(false);
@@ -130,7 +135,7 @@ function BulkDelay({
       <Segmented value={day} onChange={setDay} options={days.map((x) => ({ value: x, label: x === today ? 'Today' : formatDay(x) }))} />
       <Caption>Field</Caption>
       <Segmented value={field} onChange={setField} options={[{ value: 'all', label: 'All fields' }, ...fields.map((f) => ({ value: f, label: f }))]} />
-      <Field label="Starting at or after (24h HH:MM)" value={from} onChangeText={setFrom} autoCapitalize="none" />
+      <TimeSelect label="Starting at or after" value={from} onChange={setFrom} step={15} max="23:45" timeZone={timeZone} />
       <Caption>Delay by</Caption>
       <Row style={{ flexWrap: 'wrap' }}>
         {[15, 30, 45, 60, 90, 120].map((m) => (

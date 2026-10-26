@@ -14,7 +14,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULTS = {
   venue: 'Cooperstown, NY',
   address: 'Cooperstown, NY 13326',
-  checkInWindow: '12:00 PM – 6:00 PM on arrival day',
+  checkInWindow: '12:00 PM – 6:00 PM ET on arrival day',
   latitude: 42.7006,
   longitude: -74.9243,
 };

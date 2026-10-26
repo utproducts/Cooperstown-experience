@@ -6,6 +6,7 @@ import { useBackend } from '@/data';
 import { clearScore, delayGames, rescheduleGame, saveScore } from '@/data/services';
 import type { EventWeek, Game, Team } from '@/data/types';
 import { localDateKey, localTimeKey, zonedToIso, formatDateTime } from '@/lib/time';
+import { TimeSelect } from './time-select';
 
 import { teamLabel } from './game-card';
 import { Sheet } from './sheet';
@@ -162,7 +163,7 @@ export function GameEditor({
       {mode === 'time' && (
         <>
           <Field label="Date (YYYY-MM-DD)" value={date} onChangeText={setDate} autoCapitalize="none" />
-          <Field label="Start time (24h HH:MM, local)" value={time} onChangeText={setTime} autoCapitalize="none" />
+          <TimeSelect label="Start time" value={time} onChange={setTime} step={15} max="23:45" timeZone={event.timezone} />
           <Field label="Field" value={field} onChangeText={setField} />
           <Field label="Note to families (optional)" value={reason} onChangeText={setReason} />
           <Button

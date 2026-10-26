@@ -15,7 +15,7 @@ const TEMPLATES: { label: string; kind: NotificationKind; title: string; body: s
   { label: 'All clear', kind: 'weather', title: 'All clear — play resumes', body: 'Play resumes in 20 minutes. Game times have been adjusted in the schedule.' },
   { label: 'Heat advisory', kind: 'weather', title: 'Heat advisory today', body: 'High heat expected this afternoon. Water stations are at every field. Hats and sunscreen strongly recommended.' },
   { label: 'Rain-out', kind: 'schedule', title: 'Games postponed for rain', body: 'Fields are unplayable. Remaining games today are postponed. New times will be posted tonight.' },
-  { label: 'Ceremony reminder', kind: 'general', title: 'Opening Ceremonies tomorrow', body: 'Teams line up behind their banners at 7:00 AM in full uniform. Ceremonies begin at 7:30 AM.' },
+  { label: 'Ceremony reminder', kind: 'general', title: 'Opening Ceremonies tomorrow', body: 'Teams line up behind their banners at 7:00 AM ET in full uniform. Ceremonies begin at 7:30 AM ET.' },
 ];
 
 export default function Messages() {

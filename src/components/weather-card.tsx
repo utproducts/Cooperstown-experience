@@ -4,6 +4,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { C, S } from '@/constants/theme';
 import type { EventWeek } from '@/data/types';
 import { describeWeather, fetchForecast, type Forecast } from '@/lib/weather';
+import { to12h } from '@/lib/time';
 
 import { Badge, Body, Caption, Card, Eyebrow, Row } from './ui';
 
@@ -61,11 +62,12 @@ export function WeatherCard({ event, compact }: { event: EventWeek | null; compa
           </Caption>
         </View>
       </Row>
+      {!compact && <Caption>Next hours (ET)</Caption>}
       {!compact && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.md }}>
           {forecast.hourly.map((h) => (
             <View key={h.time} style={{ alignItems: 'center', gap: 2, minWidth: 44 }}>
-              <Caption>{new Date(`${h.time}:00`).toLocaleTimeString('en-US', { hour: 'numeric' })}</Caption>
+              <Caption>{to12h(h.time.slice(11, 16)).replace(':00', '')}</Caption>
               <Text style={{ fontSize: 18 }}>{describeWeather(h.code).emoji}</Text>
               <Body style={{ fontWeight: '700' }}>{h.tempF}°</Body>
               <Caption style={{ color: h.precipChance >= 50 ? C.warn : C.muted }}>{h.precipChance}%</Caption>

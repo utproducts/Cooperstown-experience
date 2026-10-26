@@ -62,8 +62,25 @@ export function addMinutes(iso: string, minutes: number): string {
   return new Date(new Date(iso).getTime() + minutes * 60000).toISOString();
 }
 
+/**
+ * Short time zone label shown after every time ("ET" for Cooperstown). Families travel from other zones, so a time is
+ * never shown without one.
+ */
+export function zoneLabel(timeZone = DEFAULT_TZ): string {
+  if (timeZone === 'America/New_York') return 'ET';
+  const part = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' }).formatToParts(new Date()).find((x) => x.type === 'timeZoneName');
+  return part?.value ?? timeZone;
+}
+
+/** "8:00 AM ET" */
 export function formatTime(iso: string, timeZone = DEFAULT_TZ): string {
-  return new Date(iso).toLocaleTimeString('en-US', { timeZone, hour: 'numeric', minute: '2-digit' });
+  return `${new Date(iso).toLocaleTimeString('en-US', { timeZone, hour: 'numeric', minute: '2-digit' })} ${zoneLabel(timeZone)}`;
+}
+
+/** A wall-clock "HH:MM" (24-hour) as "8:00 AM"; "24:00" is midnight at the end of the day. */
+export function to12h(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${h % 24 < 12 ? 'AM' : 'PM'}`;
 }
 
 export function formatDay(isoOrDate: string, timeZone = DEFAULT_TZ): string {

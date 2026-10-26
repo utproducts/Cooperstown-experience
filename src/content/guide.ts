@@ -16,10 +16,10 @@ export interface ItineraryItem {
 }
 
 export const ITINERARY: ItineraryItem[] = [
-  { day: 0, time: '8:00 AM', title: 'Arrival & player check-in', detail: 'Show each player’s QR code at the check-in tent. Players receive credentials and bunk assignments.', icon: 'qr-code' },
+  { day: 0, time: '8:00 AM ET', title: 'Arrival & player check-in', detail: 'Show each player’s QR code at the check-in tent. Players receive credentials and bunk assignments.', icon: 'qr-code' },
   { day: 0, title: 'Opening Ceremonies & first pool games', detail: 'Teams parade behind their banners, then pool play starts. Check the schedule for your first game and field.', icon: 'flag' },
-  { day: 0, time: '7:00 PM', title: 'Parent & coaches meetings', detail: 'Rules, bracket format and what to expect this week.', icon: 'people' },
-  { day: 1, title: 'Pool play', detail: 'Games run 8 AM–10 PM on 12 fields. Up to three games a day — hydrate between games.', icon: 'baseball' },
+  { day: 0, time: '7:00 PM ET', title: 'Parent & coaches meetings', detail: 'Rules, bracket format and what to expect this week.', icon: 'people' },
+  { day: 1, title: 'Pool play', detail: 'Games run 8 AM–10 PM ET on 12 fields. Up to three games a day — hydrate between games.', icon: 'baseball' },
   { day: 1, title: 'Team photos & pin trading', detail: 'Photo sessions run all day — book a slot. Pin trading starts at the pavilion each evening.', icon: 'camera' },
   { day: 2, title: 'Pool play', detail: 'Every team plays 6 pool games to set the seeding.', icon: 'baseball' },
   { day: 3, title: 'Final pool games & skills competition', detail: 'Seeds post tonight: every team advances to the Championship, Monster or Cooper bracket.', icon: 'trophy' },
@@ -53,7 +53,7 @@ export const CHECKLIST: ChecklistItem[] = [
 export const FAQ: { q: string; a: string }[] = [
   { q: 'Where do we check in?', a: 'At the check-in tent near the main entrance during the arrival-day window. Each player needs their QR code (in the Player tab) — a screenshot works if the signal is weak.' },
   { q: 'Can I check in more than one player?', a: 'Yes. Each player has their own QR code in the Player tab. Use the picker at the top to switch between players.' },
-  { q: 'How does the bracket work?', a: 'After 6 pool games, every team is seeded and placed in one of three single-elimination brackets: Championship (top seeds), Monster or Cooper. Every team is guaranteed at least 7 games. A team that keeps winning may play up to four games in a day, and bracket games can run past 10 PM if needed.' },
+  { q: 'How does the bracket work?', a: 'After 6 pool games, every team is seeded and placed in one of three single-elimination brackets: Championship (top seeds), Monster or Cooper. Every team is guaranteed at least 7 games. A team that keeps winning may play up to four games in a day, and bracket games can run past 10 PM ET if needed.' },
   { q: 'What happens with rain or lightning?', a: 'Play is suspended for lightning within the safety radius. Delays and new game times are pushed to everyone following the affected teams, and the schedule updates automatically.' },
   { q: 'How do I get schedule changes?', a: 'Follow your team with the code from your invitation email and allow notifications. Every delay or time change is sent to all followers of that team.' },
   { q: 'Where is the nearest airport?', a: 'Albany (ALB) is about 75 minutes away. Syracuse (SYR) and Binghamton (BGM) are also options.' },
