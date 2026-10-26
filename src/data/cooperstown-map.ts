@@ -1,7 +1,7 @@
 // Row <-> model mapping for the Cooperstown All Star Village database (utproducts/cooperstown, Supabase project
 // "cooperstown"). Pure: no network here, so it's tested against real rows.
 import { DEFAULT_TZ, localDateKey, localTimeKey, zonedToIso } from '../lib/time';
-import type { EventWeek, Game, Player, Team, TeamCheckin, UmpireCode } from './types';
+import type { AppNotification, EventWeek, Game, NotificationKind, Player, Team, TeamCheckin, UmpireCode } from './types';
 
 // The tournament's grounds (weather and directions).
 export const VENUE = {
@@ -340,4 +340,28 @@ export function toPlayerPatch(p: Partial<Player>): Record<string, unknown> {
   if (p.checkedInAt !== undefined) row.checked_in_at = p.checkedInAt;
   if (p.checkedInBy !== undefined) row.checked_in_by = p.checkedInBy ?? '';
   return row;
+}
+
+// --- alerts (003_family_features) ----------------------------------------------------------------------------------
+
+export interface NotificationRow {
+  id: number;
+  week_id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  team_ids: string[];
+  created_at: string;
+  created_by: string;
+}
+
+export const NOTIFICATION_COLUMNS = 'id, week_id, kind, title, body, team_ids, created_at, created_by';
+
+export function toNotification(n: NotificationRow): AppNotification {
+  return { id: String(n.id), eventId: n.week_id, kind: n.kind, title: n.title, body: n.body, teamIds: n.team_ids ?? [], createdAt: n.created_at, createdBy: n.created_by || null };
+}
+
+/** Model -> row. The database stamps the time; who sent it reads as the staff member's name. */
+export function toNotificationInsert(n: Partial<AppNotification>, sender: string): Record<string, unknown> {
+  return { week_id: n.eventId, kind: n.kind ?? 'general', title: (n.title ?? '').trim().slice(0, 120), body: (n.body ?? '').trim().slice(0, 2000), team_ids: n.teamIds ?? [], created_by: sender };
 }

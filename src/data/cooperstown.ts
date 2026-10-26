@@ -21,7 +21,11 @@ import {
   toUmpireCode,
   umpGameToGame,
   winnerIndex,
+  NOTIFICATION_COLUMNS,
   PLAYER_COLUMNS,
+  toNotification,
+  toNotificationInsert,
+  type NotificationRow,
   rosterToPlayer,
   toPlayer,
   toPlayerPatch,
@@ -35,13 +39,15 @@ import {
   type UmpireCodeRow,
   type WeekRow,
 } from './cooperstown-map';
-import type { Game, Player, Profile, Team } from './types';
+import type { AppNotification, Game, Player, Profile, Team } from './types';
 
 const FEATURES: Features = {
   familyAccounts: true,
   followCodes: false,
   rosters: true,
-  alerts: false,
+  alerts: true,
+  // On once the push-dispatch function is deployed (supabase/proposals/README.md in utproducts/cooperstown).
+  push: false,
   meetings: false,
   photos: false,
   invites: false,
@@ -264,8 +270,17 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           rows = ((data ?? []) as PlayerRow[]).map(toPlayer);
           break;
         }
+        case 'notifications': {
+          // Anyone reads a published week's alerts (like its schedule); staff read every week's.
+          let nq = client.from('notifications').select(NOTIFICATION_COLUMNS);
+          if (eventId) nq = nq.eq('week_id', eventId);
+          const { data, error } = await nq.order('created_at', { ascending: false }).limit(500);
+          fail(error);
+          rows = ((data ?? []) as NotificationRow[]).map(toNotification);
+          break;
+        }
         default:
-          // Family-side tables (alerts, meetings, photos, invites) aren't wired up yet.
+          // Family-side tables (meetings, photos, invites) aren't wired up yet.
           return [];
       }
       return ordered(
@@ -358,7 +373,15 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           emitLocal('players');
           return out as unknown as Tables[typeof table][];
         }
-        case 'notifications':
+        case 'notifications': {
+          const { data, error } = await client
+            .from('notifications')
+            .insert(rows.map((r) => toNotificationInsert(r as Partial<AppNotification>, profile?.name ?? '')))
+            .select(NOTIFICATION_COLUMNS);
+          fail(error);
+          emitLocal('notifications');
+          return ((data ?? []) as NotificationRow[]).map(toNotification) as unknown as Tables[typeof table][];
+        }
         case 'invites':
           // No alerts or invite emails here yet: accept and drop, so schedule changes still go through.
           return rows.map((r) => ({ id: `local-${randomToken(8)}`, ...r })) as unknown as Tables[typeof table][];
@@ -476,6 +499,10 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           fail((await client.from('players').delete().in('id', ids)).error);
           emitLocal('players');
           return;
+        case 'notifications':
+          fail((await client.from('notifications').delete().in('id', ids.map(Number))).error);
+          emitLocal('notifications');
+          return;
         case 'follows':
           follows = follows.filter((f) => !ids.includes(f.id));
           await AsyncStorage.setItem(FOLLOWS_KEY, JSON.stringify(follows)).catch(() => {});
@@ -489,7 +516,7 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
     subscribe(table, cb) {
       if (!localListeners.has(table)) localListeners.set(table, new Set());
       localListeners.get(table)!.add(cb);
-      const dbTable = { events: 'weeks', teams: 'teams', games: 'games', umpire_codes: 'umpire_codes', team_checkins: 'checkins', players: 'players' }[table as string];
+      const dbTable = { events: 'weeks', teams: 'teams', games: 'games', umpire_codes: 'umpire_codes', team_checkins: 'checkins', players: 'players', notifications: 'notifications' }[table as string];
       if (!dbTable) return () => localListeners.get(table)?.delete(cb);
       // Realtime when the table is published for it; a periodic refresh either way so scores never go stale.
       const channel = client
@@ -497,7 +524,7 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
         .on('postgres_changes', { event: '*', schema: 'public', table: dbTable }, () => cb())
         .subscribe();
       // Games and check-ins change fast during the week; the rest rarely.
-      const timer = setInterval(cb, table === 'games' || table === 'players' ? 30_000 : 120_000);
+      const timer = setInterval(cb, table === 'games' || table === 'players' || table === 'notifications' ? 30_000 : 120_000);
       return () => {
         localListeners.get(table)?.delete(cb);
         clearInterval(timer);

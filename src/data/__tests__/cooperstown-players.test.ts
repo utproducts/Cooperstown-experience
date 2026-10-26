@@ -128,4 +128,25 @@ describe('Cooperstown backend: players and QR check-in', () => {
     expect(calls.find((c) => c.url.pathname === '/auth/v1/verify')!.body).toMatchObject({ email: 'libby@family.test', token: '123456', type: 'email' });
     expect(b.currentProfile()).toMatchObject({ id: 'u1', role: 'fan', email: 'libby@family.test' });
   });
+
+  it('posts an alert to the chosen week and reads a week’s alerts back', async () => {
+    const b = await backend();
+    respond = (c) => {
+      if (c.url.pathname === '/rest/v1/notifications' && c.method === 'POST')
+        return [{ id: 7, week_id: 'w2', kind: 'general', title: 'Welcome', body: 'See you soon', team_ids: [], created_at: '2027-06-01T12:00:00Z', created_by: '' }];
+      if (c.url.pathname === '/rest/v1/notifications') return [{ id: 7, week_id: 'w2', kind: 'general', title: 'Welcome', body: 'See you soon', team_ids: [], created_at: '2027-06-01T12:00:00Z', created_by: 'Desk' }];
+      return [];
+    };
+    const [n] = await b.insert('notifications', [{ eventId: 'w2', kind: 'general', title: ' Welcome ', body: 'See you soon', teamIds: [], createdAt: 'ignored', createdBy: 'ignored' }]);
+    const post = calls.find((c) => c.method === 'POST' && c.url.pathname === '/rest/v1/notifications')!;
+    // The sender is whoever is signed in (an earlier test leaves a session behind).
+    expect(post.body).toEqual([{ week_id: 'w2', kind: 'general', title: 'Welcome', body: 'See you soon', team_ids: [], created_by: expect.any(String) }]);
+    expect(n).toMatchObject({ id: '7', eventId: 'w2', title: 'Welcome' });
+    const list = await b.select('notifications', { eq: { eventId: 'w2' } });
+    const get = calls.filter((c) => c.method === 'GET' && c.url.pathname === '/rest/v1/notifications').at(-1)!;
+    expect(get.url.searchParams.get('week_id')).toBe('eq.w2');
+    expect(list[0]).toMatchObject({ id: '7', createdBy: 'Desk' });
+    expect(b.features.alerts).toBe(true);
+    expect(b.features.push).toBe(false);
+  });
 });

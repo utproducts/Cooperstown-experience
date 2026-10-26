@@ -84,7 +84,7 @@ export function createDemoBackend(appUrl: string): Backend {
 
   const backend: Backend = {
     mode: 'demo',
-    features: { familyAccounts: true, followCodes: true, rosters: true, alerts: true, meetings: true, photos: true, invites: true, liveStatus: true },
+    features: { familyAccounts: true, followCodes: true, rosters: true, alerts: true, push: true, meetings: true, photos: true, invites: true, liveStatus: true },
 
     currentProfile: () => profile,
     onAuthChange(cb) {

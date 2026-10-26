@@ -72,8 +72,10 @@ export interface Features {
   followCodes: boolean;
   /** Player rosters, parent links and per-player QR check-in. */
   rosters: boolean;
-  /** Push alerts and the alerts feed. */
+  /** The alerts feed (families' Alerts tab). */
   alerts: boolean;
+  /** Alerts also arrive as push notifications (needs the push-dispatch function and a native app). */
+  push: boolean;
   meetings: boolean;
   photos: boolean;
   /** Invite emails with team codes. */

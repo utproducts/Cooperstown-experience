@@ -140,7 +140,7 @@ export function GameEditor({
         <>
           <Body>
             Push this game back{cascade ? ', along with every later game on this field today' : ''}.{' '}
-            {backend.features.alerts ? 'Both teams get a push notification.' : 'Families see the new time on the schedule.'}
+            {backend.features.push ? 'Both teams get a push notification.' : backend.features.alerts ? 'Both teams get an alert in the app.' : 'Families see the new time on the schedule.'}
           </Body>
           <Row style={{ flexWrap: 'wrap' }}>
             {[15, 30, 45, 60, 90, 120].map((m) => (

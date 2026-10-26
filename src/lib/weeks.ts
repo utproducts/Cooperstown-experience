@@ -84,3 +84,26 @@ function findDateIn(text: string): string | null {
   const m = text.match(/(\d{4}-\d{1,2}-\d{1,2})|(\d{1,2}\/\d{1,2}\/\d{2,4})/);
   return m ? normalizeIsoDate(m[0]) : null;
 }
+
+export interface AlertWeekOption<T> {
+  week: T;
+  /** "This week", "Next week", or null */
+  tag: string | null;
+}
+
+/**
+ * Weeks an alert can go to, most useful first: the week happening today, the next one, the rest of the upcoming
+ * weeks, then past weeks (most recent first). Directors often post a delay for this week and a welcome for next
+ * week on the same day.
+ */
+export function alertWeekOptions<T extends Pick<EventWeek, 'id' | 'startsOn' | 'endsOn'>>(events: T[], today: string): AlertWeekOption<T>[] {
+  const byStart = [...events].sort((a, b) => a.startsOn.localeCompare(b.startsOn));
+  const current = byStart.filter((e) => weekStatus(e, today) === 'current');
+  const upcoming = byStart.filter((e) => weekStatus(e, today) === 'upcoming');
+  const past = byStart.filter((e) => weekStatus(e, today) === 'past').reverse();
+  return [
+    ...current.map((week) => ({ week, tag: 'This week' })),
+    ...upcoming.map((week, i) => ({ week, tag: i === 0 ? 'Next week' : null })),
+    ...past.map((week) => ({ week, tag: null })),
+  ];
+}

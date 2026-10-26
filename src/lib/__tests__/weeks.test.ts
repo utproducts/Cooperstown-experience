@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateSeasonWeeks, matchWeek, pickDefaultEvent, weekStatus } from '../weeks';
+import { alertWeekOptions, generateSeasonWeeks, matchWeek, pickDefaultEvent, weekStatus } from '../weeks';
 
 const season = generateSeasonWeeks('2027-05-29', 16, { daysPerWeek: 7 }).map((w, i) => ({ id: `w${i + 1}`, ...w }));
 
@@ -53,5 +53,24 @@ describe('matchWeek', () => {
   it('returns null when nothing matches', () => {
     expect(matchWeek(season, { program: 'Fall Ball' })).toBeNull();
     expect(matchWeek(season, {})).toBeNull();
+  });
+});
+
+describe('alertWeekOptions', () => {
+  const w = (id: string, startsOn: string, endsOn: string) => ({ id, startsOn, endsOn });
+  const season = [w('w3', '2027-06-11', '2027-06-16'), w('w1', '2027-05-30', '2027-06-04'), w('w2', '2027-06-05', '2027-06-10'), w('w4', '2027-06-17', '2027-06-22')];
+
+  it('puts this week first, then next week, then later weeks, then past weeks', () => {
+    const o = alertWeekOptions(season, '2027-06-07');
+    expect(o.map((x) => [x.week.id, x.tag])).toEqual([
+      ['w2', 'This week'],
+      ['w3', 'Next week'],
+      ['w4', null],
+      ['w1', null],
+    ]);
+  });
+
+  it('between seasons, the next week leads', () => {
+    expect(alertWeekOptions(season, '2027-01-10').map((x) => [x.week.id, x.tag])[0]).toEqual(['w1', 'Next week']);
   });
 });
