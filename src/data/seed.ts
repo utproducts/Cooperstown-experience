@@ -1,3 +1,4 @@
+import { buildVenueSeed, sampleCeremony } from './seed-venue';
 import { teamPrefix } from '../lib/codes';
 import { fieldNames } from '../lib/schedule';
 import { planWeek } from '../lib/week-schedule';
@@ -177,9 +178,12 @@ export function buildSeed(now = new Date()): SeedTables {
   }));
 
   const at = (dayOffset: number, time: string) => zonedToIso(addDays(arrival, dayOffset), time);
+  const venue = buildVenueSeed({ eventId, arrival, teams, players });
+  const ceremonyField = venue.places.find((p) => p.name === 'Field 1')!.id;
 
   return {
-    events: [event, ...season],
+    ...venue,
+    events: [{ ...event, settings: { ceremony: sampleCeremony(arrival, ceremonyField) } }, ...season],
     teams: [...teams, ...week1Teams],
     players,
     games,

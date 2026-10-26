@@ -57,7 +57,14 @@
           "color": "#C8102E"
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Staff choose photos of the park, the site map and products to show families.",
+          "cameraPermission": "Staff take photos of the park and products to show families."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

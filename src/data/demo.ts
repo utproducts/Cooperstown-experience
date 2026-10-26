@@ -7,8 +7,8 @@ import { weekRange } from '../lib/weeks';
 import { saveScore } from './services';
 import type { Profile, Role } from './types';
 
-// v5: players have uniform sizes.
-const STORAGE_KEY = 'cxp-demo-v5';
+// v6: the venue (map, shop, concessions, restaurants, skills competition).
+const STORAGE_KEY = 'cxp-demo-v6';
 
 /**
  * In-memory backend with sample data, persisted to device storage. Used when
@@ -131,6 +131,14 @@ export function createDemoBackend(appUrl: string): Backend {
       if (table === 'teams' && profile?.role !== 'director') {
         rows = rows.map((t) => ({ ...t, code: null }));
       }
+      // Like the database's rules: a buyer sees only their own orders and reservations; lodging only for their own children.
+      if ((table === 'shop_orders' || table === 'reservations') && profile?.role !== 'director') {
+        rows = rows.filter((r) => (r as { userId: string | null }).userId === profile?.id) as never;
+      }
+      if (table === 'team_lodging' && profile?.role !== 'director') {
+        const mine = new Set(db.players.filter((p) => p.guardianEmail && p.guardianEmail === profile?.email).map((p) => p.teamId));
+        rows = rows.filter((r) => mine.has((r as { teamId: string }).teamId)) as never;
+      }
       if (table === 'players' && profile?.role !== 'director') {
         rows = rows.map((p) => {
           const player = p as Tables['players'];
@@ -162,7 +170,7 @@ export function createDemoBackend(appUrl: string): Backend {
     async update(table, id, patch) {
       const rows = db[table] as { id: string }[];
       const i = rows.findIndex((r) => r.id === id);
-      if (i === -1 && table === 'team_checkins') {
+      if (i === -1 && (table === 'team_checkins' || table === 'team_lodging' || table === 'venue_settings')) {
         // One check-in per team, created on first save.
         rows.push({ id, ...clone(patch) });
         emit(table);
@@ -246,6 +254,84 @@ export function createDemoBackend(appUrl: string): Backend {
     },
 
     async registerPushToken() {},
+
+    async placeOrder(input) {
+      await readyPromise;
+      if (!input.name.trim()) throw new Error('Enter a name for the order.');
+      if (input.kind === 'concession' && !input.field.trim()) throw new Error('Pick the field to deliver to.');
+      if (!input.items.length) throw new Error('Your cart is empty.');
+      const lines = input.items.map((it) => {
+        const pr = db.products.find((p) => p.id === it.productId && p.active && p.kind === input.kind);
+        if (!pr) throw new Error('Something in your cart isn’t available anymore.');
+        if (it.qty < 1 || it.qty > 20) throw new Error('Quantities are 1 to 20.');
+        if (pr.sizes.length && !pr.sizes.includes(it.size ?? '')) throw new Error(`Pick a size for ${pr.name}.`);
+        return { productId: pr.id, name: pr.name, size: pr.sizes.length ? (it.size ?? '') : '', qty: it.qty, priceCents: pr.priceCents };
+      });
+      const order = {
+        id: `order-${db.shop_orders.length + 101}`,
+        kind: input.kind,
+        eventId: input.eventId,
+        userId: profile?.id ?? null,
+        customerName: input.name.trim(),
+        customerPhone: input.phone.trim(),
+        items: lines,
+        totalCents: lines.reduce((s, l) => s + l.qty * l.priceCents, 0),
+        deliveryField: input.field.trim(),
+        deliverySpot: input.spot.trim(),
+        notes: input.notes.trim(),
+        status: 'new' as const,
+        payment: input.kind === 'concession' ? ('pay_on_delivery' as const) : ('pay_at_pickup' as const),
+        pickupCode: randomToken(6).toUpperCase(),
+        createdAt: new Date().toISOString(),
+      };
+      db.shop_orders.push(order);
+      emit('shop_orders');
+      return { id: order.id, code: order.pickupCode, totalCents: order.totalCents, payment: order.payment };
+    },
+
+    async orderStatus(id, code) {
+      await readyPromise;
+      const o = db.shop_orders.find((x) => x.id === id && x.pickupCode === code.trim().toUpperCase());
+      if (!o) throw new Error('No order matches that number and code.');
+      return clone(o);
+    },
+
+    async requestReservation(input) {
+      await readyPromise;
+      const r = db.places.find((p) => p.id === input.placeId && p.kind === 'restaurant' && p.takesReservations);
+      if (!r) throw new Error('That restaurant doesn’t take reservations in the app.');
+      if (!input.name.trim()) throw new Error('Enter a name for the reservation.');
+      if (input.partySize < 1 || input.partySize > 40) throw new Error('Party size is 1 to 40.');
+      const res = {
+        id: `res-${db.reservations.length + 1}`,
+        placeId: r.id,
+        userId: profile?.id ?? null,
+        onDate: input.onDate,
+        atTime: input.atTime,
+        partySize: input.partySize,
+        name: input.name.trim(),
+        phone: input.phone.trim(),
+        notes: input.notes.trim(),
+        status: 'requested' as const,
+        code: randomToken(6).toUpperCase(),
+        createdAt: new Date().toISOString(),
+      };
+      db.reservations.push(res);
+      emit('reservations');
+      return { id: res.id, code: res.code };
+    },
+
+    async reservationStatus(id, code) {
+      await readyPromise;
+      const r = db.reservations.find((x) => x.id === id && x.code === code.trim().toUpperCase());
+      if (!r) throw new Error('No reservation matches that number and code.');
+      return { id: r.id, status: r.status, onDate: r.onDate, atTime: r.atTime, partySize: r.partySize, restaurant: db.places.find((p) => p.id === r.placeId)?.name ?? '' };
+    },
+
+    async uploadImage(file) {
+      // Demo: the picture stays on this device.
+      return file.uri;
+    },
 
     async umpireGames(code) {
       await readyPromise;

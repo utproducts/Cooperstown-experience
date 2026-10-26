@@ -151,4 +151,14 @@ describe('Cooperstown backend: players and QR check-in', () => {
     expect(b.features.alerts).toBe(true);
     expect(b.features.push).toBe(false);
   });
+
+  it('places an order through place_order with numeric product ids', async () => {
+    const b = await backend();
+    respond = (c) => (c.url.pathname === '/rest/v1/rpc/place_order' ? { ok: true, id: 41, code: 'AB12CD', totalCents: 1000, payment: 'pay_on_delivery' } : []);
+    const o = await b.placeOrder({ kind: 'concession', eventId: 'w1', items: [{ productId: '7', qty: 2 }], name: 'Libby', phone: '', field: 'Field 3', spot: 'Home dugout', notes: '' });
+    expect(calls.find((c) => c.url.pathname === '/rest/v1/rpc/place_order')!.body).toMatchObject({ p_kind: 'concession', p_items: [{ productId: 7, qty: 2, size: '' }], p_field: 'Field 3' });
+    expect(o).toEqual({ id: '41', code: 'AB12CD', totalCents: 1000, payment: 'pay_on_delivery' });
+    respond = () => ({ error: 'Pick the field to deliver to.' });
+    await expect(b.placeOrder({ kind: 'concession', eventId: 'w1', items: [{ productId: '7', qty: 1 }], name: 'L', phone: '', field: '', spot: '', notes: '' })).rejects.toThrow('Pick the field');
+  });
 });

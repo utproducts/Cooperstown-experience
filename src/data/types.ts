@@ -71,6 +71,9 @@ export interface Player {
   externalId: string | null;
   /** Uniform sizes handed out at check-in, by item (the week's uniform items), e.g. { Jersey: 'YL', Hat: 'S/M' }. */
   uniform?: Record<string, string>;
+  /** Bunkhouse if not the team's own (a split team). */
+  lodgingPlaceId?: string | null;
+  lodgingRoom?: string;
 }
 
 export type GameStatus = 'scheduled' | 'live' | 'final' | 'delayed' | 'postponed' | 'cancelled';
@@ -194,4 +197,145 @@ export interface TeamCheckin {
   notes: string;
   checkedInAt: string | null;
   checkedInBy: string;
+}
+
+// --- venue, shop and park life (005_venue_shop) ---------------------------------------------------------------------
+
+export type PlaceKind =
+  | 'field'
+  | 'parking'
+  | 'checkin'
+  | 'bunkhouse'
+  | 'trolley'
+  | 'food'
+  | 'restaurant'
+  | 'vendor'
+  | 'restroom'
+  | 'first_aid'
+  | 'info'
+  | 'attraction'
+  | 'lodging'
+  | 'other';
+
+/** A spot at the park (pinned on the site map at x/y, 0..1) or around town (lodging, things to do: no pin). */
+export interface Place {
+  id: string;
+  kind: PlaceKind;
+  name: string;
+  description: string;
+  x: number | null;
+  y: number | null;
+  hours: string;
+  website: string;
+  phone: string;
+  address: string;
+  imageUrl: string;
+  /** Restaurants: families can request a table in the app. */
+  takesReservations: boolean;
+  sort: number;
+  active: boolean;
+}
+
+/** Site-wide content staff edit: the site map, park photos, park rules. */
+export interface VenueSetting {
+  /** e.g. 'site_map', 'photos', 'park_rules' */
+  id: string;
+  value: Record<string, unknown>;
+}
+
+export type ProductKind = 'apparel' | 'concession' | 'menu';
+
+export interface Product {
+  id: string;
+  kind: ProductKind;
+  /** null: every week. */
+  eventId: string | null;
+  /** Menu items: the restaurant. */
+  placeId: string | null;
+  category: string;
+  name: string;
+  description: string;
+  priceCents: number;
+  sizes: string[];
+  imageUrl: string;
+  active: boolean;
+  sort: number;
+}
+
+export type ShopOrderStatus = 'new' | 'preparing' | 'ready' | 'out' | 'delivered' | 'picked_up' | 'cancelled';
+
+export interface ShopOrderLine {
+  productId: string;
+  name: string;
+  size: string;
+  qty: number;
+  priceCents: number;
+}
+
+export interface ShopOrder {
+  id: string;
+  kind: 'apparel' | 'concession';
+  eventId: string | null;
+  userId: string | null;
+  customerName: string;
+  customerPhone: string;
+  items: ShopOrderLine[];
+  totalCents: number;
+  deliveryField: string;
+  deliverySpot: string;
+  notes: string;
+  status: ShopOrderStatus;
+  payment: 'pay_on_delivery' | 'pay_at_pickup' | 'paid';
+  pickupCode: string;
+  createdAt: string;
+}
+
+export interface Reservation {
+  id: string;
+  placeId: string;
+  userId: string | null;
+  onDate: string;
+  /** "18:30" (ET) */
+  atTime: string;
+  partySize: number;
+  name: string;
+  phone: string;
+  notes: string;
+  status: 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'seated';
+  code: string;
+  createdAt: string;
+}
+
+export interface SkillsEvent {
+  id: string;
+  eventId: string;
+  name: string;
+  description: string;
+  /** e.g. 'sec', 'mph', 'ft' */
+  unit: string;
+  better: 'high' | 'low';
+  startsAt: string | null;
+  placeId: string | null;
+  sort: number;
+}
+
+export interface SkillsResult {
+  id: string;
+  skillsEventId: string;
+  teamId: string | null;
+  playerId: string | null;
+  /** First name and last initial, as shown on the public leaderboard. */
+  displayName: string;
+  value: number;
+  recordedBy: string;
+  recordedAt: string;
+}
+
+/** A team's bunkhouse for its week (id = teamId). */
+export interface TeamLodging {
+  id: string;
+  teamId: string;
+  placeId: string | null;
+  room: string;
+  notes: string;
 }

@@ -22,6 +22,10 @@ import {
   umpGameToGame,
   winnerIndex,
   NOTIFICATION_COLUMNS,
+  SPECS,
+  specToModel,
+  specToRow,
+  type TableSpec,
   PLAYER_COLUMNS,
   toNotification,
   toNotificationInsert,
@@ -145,6 +149,25 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
       const bv = (b as Record<string, unknown>)[column] as string | number;
       return (av < bv ? -1 : av > bv ? 1 : 0) * (ascending ? 1 : -1);
     });
+  }
+
+  const specFor = (table: TableName): TableSpec | null => (table in SPECS ? SPECS[table as keyof typeof SPECS] : null);
+
+  /** Tables that map column for column (005_venue_shop): filters, order and ids go through the spec. */
+  async function selectSpec(spec: TableSpec, q?: Query<Record<string, unknown>>) {
+    let sq = client.from(spec.table).select(Object.values(spec.columns).filter((c, i, a) => a.indexOf(c) === i).join(', '));
+    for (const [k, v] of Object.entries(q?.eq ?? {})) {
+      const col = spec.columns[k];
+      if (col) sq = v === null ? sq.is(col, null) : sq.eq(col, spec.ids.includes(k) ? Number(v) : (v as string));
+    }
+    if (q?.in && spec.columns[q.in.column]) {
+      const vals = (q.in.values as string[]).filter((v) => v !== '__none__');
+      if (!vals.length) return [];
+      sq = sq.in(spec.columns[q.in.column], spec.ids.includes(q.in.column) ? vals.map(Number) : vals);
+    }
+    const { data, error } = await sq.limit(5000);
+    fail(error);
+    return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => specToModel<Record<string, unknown>>(spec, r));
   }
 
   async function selectGames(weekIds: string[] | null): Promise<Game[]> {
@@ -279,9 +302,12 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           rows = ((data ?? []) as NotificationRow[]).map(toNotification);
           break;
         }
-        default:
-          // Family-side tables (meetings, photos, invites) aren't wired up yet.
-          return [];
+        default: {
+          const spec = specFor(table);
+          // Family-side tables without a spec (meetings, photos, invites) aren't wired up yet.
+          if (!spec) return [];
+          rows = await selectSpec(spec, q);
+        }
       }
       return ordered(
         (rows as Record<string, unknown>[]).filter((r) => matches(r, q)),
@@ -383,10 +409,17 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           return ((data ?? []) as NotificationRow[]).map(toNotification) as unknown as Tables[typeof table][];
         }
         case 'invites':
-          // No alerts or invite emails here yet: accept and drop, so schedule changes still go through.
+          // No invite emails here yet: accept and drop, so imports still go through.
           return rows.map((r) => ({ id: `local-${randomToken(8)}`, ...r })) as unknown as Tables[typeof table][];
-        default:
-          throw notAvailable(table.replace('_', ' '));
+        default: {
+          const spec = specFor(table);
+          if (!spec) throw notAvailable(table.replace('_', ' '));
+          const payload = rows.map((r) => specToRow(spec, r, { insert: true }));
+          const { data, error } = await client.from(spec.table).insert(payload).select(Object.values(spec.columns).filter((c, i, a) => a.indexOf(c) === i).join(', '));
+          fail(error);
+          emitLocal(table);
+          return ((data ?? []) as unknown as Record<string, unknown>[]).map((r) => specToModel(spec, r)) as unknown as Tables[typeof table][];
+        }
       }
     },
 
@@ -475,8 +508,23 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           );
           return;
         }
-        default:
-          throw notAvailable(table.replace('_', ' '));
+        default: {
+          const spec = specFor(table);
+          if (!spec) throw notAvailable(table.replace('_', ' '));
+          const row = specToRow(spec, p);
+          if (spec.upsertOn) {
+            // One row per key (a team's lodging, a venue setting): create it on first save.
+            const keyCol = spec.upsertOn;
+            const withKey = { ...row, [keyCol]: spec.ids.includes('id') ? Number(id) : id };
+            if (spec.table === 'venue_settings') withKey.updated_at = new Date().toISOString();
+            fail((await client.from(spec.table).upsert(withKey, { onConflict: keyCol })).error);
+          } else if (Object.keys(row).length) {
+            if (spec.table === 'orders') row.updated_at = new Date().toISOString();
+            fail((await client.from(spec.table).update(row).eq(spec.columns.id, spec.ids.includes('id') ? Number(id) : id)).error);
+          }
+          emitLocal(table);
+          return;
+        }
       }
     },
 
@@ -508,15 +556,21 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
           await AsyncStorage.setItem(FOLLOWS_KEY, JSON.stringify(follows)).catch(() => {});
           emitLocal('follows');
           return;
-        default:
-          throw notAvailable(table.replace('_', ' '));
+        default: {
+          const spec = specFor(table);
+          if (!spec) throw notAvailable(table.replace('_', ' '));
+          const col = spec.upsertOn ?? spec.columns.id;
+          fail((await client.from(spec.table).delete().in(col, spec.ids.includes('id') ? ids.map(Number) : ids)).error);
+          emitLocal(table);
+          return;
+        }
       }
     },
 
     subscribe(table, cb) {
       if (!localListeners.has(table)) localListeners.set(table, new Set());
       localListeners.get(table)!.add(cb);
-      const dbTable = { events: 'weeks', teams: 'teams', games: 'games', umpire_codes: 'umpire_codes', team_checkins: 'checkins', players: 'players', notifications: 'notifications' }[table as string];
+      const dbTable = { events: 'weeks', teams: 'teams', games: 'games', umpire_codes: 'umpire_codes', team_checkins: 'checkins', players: 'players', notifications: 'notifications', ...Object.fromEntries(Object.entries(SPECS).map(([k, v]) => [k, v.table])) }[table as string];
       if (!dbTable) return () => localListeners.get(table)?.delete(cb);
       // Realtime when the table is published for it; a periodic refresh either way so scores never go stale.
       const channel = client
@@ -524,7 +578,8 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
         .on('postgres_changes', { event: '*', schema: 'public', table: dbTable }, () => cb())
         .subscribe();
       // Games and check-ins change fast during the week; the rest rarely.
-      const timer = setInterval(cb, table === 'games' || table === 'players' || table === 'notifications' ? 30_000 : 120_000);
+      const fast = ['games', 'players', 'notifications', 'shop_orders', 'reservations', 'skills_results'];
+      const timer = setInterval(cb, fast.includes(table) ? 30_000 : 120_000);
       return () => {
         localListeners.get(table)?.delete(cb);
         clearInterval(timer);
@@ -564,6 +619,72 @@ export function createCooperstownBackend(url: string, publishableKey: string): B
       throw notAvailable('Photo checkout');
     },
     async registerPushToken() {},
+
+    async placeOrder(input) {
+      const { data, error } = await client.rpc('place_order', {
+        p_kind: input.kind,
+        p_week: input.eventId,
+        p_items: input.items.map((i) => ({ productId: Number(i.productId), qty: i.qty, size: i.size ?? '' })),
+        p_name: input.name,
+        p_phone: input.phone,
+        p_field: input.field,
+        p_spot: input.spot,
+        p_notes: input.notes,
+      });
+      fail(error);
+      if (!data || data.error) throw new Error(data?.error ?? 'Something went wrong. Please try again.');
+      emitLocal('shop_orders');
+      return { id: String(data.id), code: data.code, totalCents: data.totalCents, payment: data.payment };
+    },
+
+    async orderStatus(id, code) {
+      const { data, error } = await client.rpc('order_status', { p_id: Number(id), p_code: code });
+      fail(error);
+      if (!data || data.error) throw new Error(data?.error ?? 'No order matches that number and code.');
+      return {
+        id: String(data.id),
+        kind: data.kind,
+        status: data.status,
+        items: (data.items ?? []).map((l: Record<string, unknown>) => ({ ...l, productId: String(l.productId) })),
+        totalCents: data.totalCents,
+        deliveryField: data.field,
+        deliverySpot: data.spot,
+        payment: data.payment,
+      };
+    },
+
+    async requestReservation(input) {
+      const { data, error } = await client.rpc('request_reservation', {
+        p_place: Number(input.placeId),
+        p_date: input.onDate,
+        p_time: input.atTime,
+        p_party: input.partySize,
+        p_name: input.name,
+        p_phone: input.phone,
+        p_notes: input.notes,
+      });
+      fail(error);
+      if (!data || data.error) throw new Error(data?.error ?? 'Something went wrong. Please try again.');
+      emitLocal('reservations');
+      return { id: String(data.id), code: data.code };
+    },
+
+    async reservationStatus(id, code) {
+      const { data, error } = await client.rpc('reservation_status', { p_id: Number(id), p_code: code });
+      fail(error);
+      if (!data || data.error) throw new Error(data?.error ?? 'No reservation matches that number and code.');
+      return { id: String(data.id), status: data.status, onDate: data.date, atTime: data.time, partySize: data.party, restaurant: data.restaurant };
+    },
+
+    async uploadImage(file) {
+      // Staff only (the bucket's rules). Pictures are public once uploaded: the map, park photos, products.
+      const body = await (await fetch(file.uri)).blob();
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const path = `${new Date().toISOString().slice(0, 10)}/${randomToken(10)}.${ext}`;
+      const { error } = await client.storage.from('venue').upload(path, body, { contentType: file.type || 'image/jpeg', upsert: false });
+      fail(error);
+      return client.storage.from('venue').getPublicUrl(path).data.publicUrl;
+    },
 
     async weekFields(eventId) {
       return (await fieldsFor(eventId)).map((f) => f.name);

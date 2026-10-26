@@ -277,9 +277,12 @@ export interface PlayerRow {
   checked_in_by: string;
   external_id: string;
   uniform?: Record<string, string>;
+  lodging_place_id?: number | null;
+  lodging_room?: string;
 }
 
-export const PLAYER_COLUMNS = 'id, team_id, first_name, last_name, jersey_number, guardian_name, guardian_email, guardian_phone, check_in_token, checked_in_at, checked_in_by, external_id, uniform';
+export const PLAYER_COLUMNS =
+  'id, team_id, first_name, last_name, jersey_number, guardian_name, guardian_email, guardian_phone, check_in_token, checked_in_at, checked_in_by, external_id, uniform, lodging_place_id, lodging_room';
 
 export function toPlayer(p: PlayerRow): Player {
   return {
@@ -297,6 +300,8 @@ export function toPlayer(p: PlayerRow): Player {
     checkedInBy: p.checked_in_by || null,
     externalId: p.external_id || null,
     uniform: p.uniform ?? {},
+    lodgingPlaceId: p.lodging_place_id != null ? String(p.lodging_place_id) : null,
+    lodgingRoom: p.lodging_room ?? '',
   };
 }
 
@@ -341,6 +346,8 @@ export function toPlayerPatch(p: Partial<Player>): Record<string, unknown> {
   if (p.externalId !== undefined) row.external_id = p.externalId ?? '';
   if (p.checkedInAt !== undefined) row.checked_in_at = p.checkedInAt;
   if (p.checkedInBy !== undefined) row.checked_in_by = p.checkedInBy ?? '';
+  if (p.lodgingPlaceId !== undefined) row.lodging_place_id = p.lodgingPlaceId ? Number(p.lodgingPlaceId) : null;
+  if (p.lodgingRoom !== undefined) row.lodging_room = (p.lodgingRoom ?? '').trim();
   if (p.uniform !== undefined) row.uniform = Object.fromEntries(Object.entries(p.uniform ?? {}).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v));
   return row;
 }
@@ -367,4 +374,88 @@ export function toNotification(n: NotificationRow): AppNotification {
 /** Model -> row. The database stamps the time; who sent it reads as the staff member's name. */
 export function toNotificationInsert(n: Partial<AppNotification>, sender: string): Record<string, unknown> {
   return { week_id: n.eventId, kind: n.kind ?? 'general', title: (n.title ?? '').trim().slice(0, 120), body: (n.body ?? '').trim().slice(0, 2000), team_ids: n.teamIds ?? [], created_by: sender };
+}
+
+// --- venue, shop and park life (005_venue_shop): plain column mappings ---------------------------------------------
+
+/** How a model maps onto a table: model key -> column, and which keys are bigint ids (strings in the app). */
+export interface TableSpec {
+  table: string;
+  columns: Record<string, string>;
+  ids: string[];
+  /** Keys the database fills in (never written). */
+  readOnly?: string[];
+  /** Keys whose rows are upserted on update (one row per key, e.g. a team's lodging). */
+  upsertOn?: string;
+}
+
+const cols = (keys: string[], extra: Record<string, string> = {}) =>
+  Object.fromEntries([...keys.map((k) => [k, k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)]), ...Object.entries(extra)]);
+
+export const SPECS: Record<'places' | 'venue_settings' | 'products' | 'shop_orders' | 'reservations' | 'skills_events' | 'skills_results' | 'team_lodging', TableSpec> = {
+  places: {
+    table: 'places',
+    columns: cols(['id', 'kind', 'name', 'description', 'x', 'y', 'hours', 'website', 'phone', 'address', 'imageUrl', 'takesReservations', 'sort', 'active']),
+    ids: ['id'],
+  },
+  venue_settings: { table: 'venue_settings', columns: { id: 'key', value: 'value' }, ids: [], upsertOn: 'key' },
+  products: {
+    table: 'products',
+    columns: cols(['id', 'kind', 'placeId', 'category', 'name', 'description', 'priceCents', 'sizes', 'imageUrl', 'active', 'sort'], { eventId: 'week_id' }),
+    ids: ['id', 'placeId'],
+  },
+  shop_orders: {
+    table: 'orders',
+    columns: cols(['id', 'kind', 'userId', 'customerName', 'customerPhone', 'items', 'totalCents', 'deliveryField', 'deliverySpot', 'notes', 'status', 'payment', 'pickupCode', 'createdAt'], { eventId: 'week_id' }),
+    ids: ['id'],
+    readOnly: ['pickupCode', 'createdAt', 'userId', 'items', 'totalCents', 'payment'],
+  },
+  reservations: {
+    table: 'reservations',
+    columns: cols(['id', 'placeId', 'userId', 'onDate', 'atTime', 'partySize', 'name', 'phone', 'notes', 'status', 'code', 'createdAt']),
+    ids: ['id', 'placeId'],
+    readOnly: ['code', 'createdAt', 'userId'],
+  },
+  skills_events: {
+    table: 'skills_events',
+    columns: cols(['id', 'name', 'description', 'unit', 'better', 'startsAt', 'placeId', 'sort'], { eventId: 'week_id' }),
+    ids: ['id', 'placeId'],
+  },
+  skills_results: {
+    table: 'skills_results',
+    columns: cols(['id', 'teamId', 'playerId', 'displayName', 'value', 'recordedBy', 'recordedAt'], { skillsEventId: 'event_id' }),
+    ids: ['id', 'skillsEventId'],
+    readOnly: ['recordedAt'],
+  },
+  team_lodging: {
+    table: 'team_lodging',
+    columns: { id: 'team_id', teamId: 'team_id', placeId: 'place_id', room: 'room', notes: 'notes' },
+    ids: ['placeId'],
+    upsertOn: 'team_id',
+  },
+};
+
+export function specToModel<T>(spec: TableSpec, row: Record<string, unknown>): T {
+  const out: Record<string, unknown> = {};
+  for (const [key, col] of Object.entries(spec.columns)) {
+    let v = row[col];
+    if (spec.ids.includes(key) && v !== null && v !== undefined) v = String(v);
+    if (key === 'atTime' && typeof v === 'string') v = v.slice(0, 5);
+    if (key === 'value' && spec.table === 'skills_results' && v !== null) v = Number(v);
+    if (key === 'items' && Array.isArray(v)) v = v.map((l: Record<string, unknown>) => ({ ...l, productId: String(l.productId) }));
+    out[key] = v ?? (key === 'sizes' ? [] : v);
+  }
+  return out as T;
+}
+
+/** Model -> row for inserts and updates; ids become numbers again, read-only keys are dropped. */
+export function specToRow(spec: TableSpec, patch: Record<string, unknown>, opts: { insert?: boolean } = {}): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(patch)) {
+    const col = spec.columns[key];
+    if (!col || spec.readOnly?.includes(key)) continue;
+    if (opts.insert && key === 'id' && spec.ids.includes('id')) continue;
+    row[col] = spec.ids.includes(key) && v !== null && v !== undefined && v !== '' ? Number(v) : v === '' && spec.ids.includes(key) ? null : v;
+  }
+  return row;
 }

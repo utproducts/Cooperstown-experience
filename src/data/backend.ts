@@ -7,12 +7,20 @@ import type {
   MeetingSlot,
   PhotoOrder,
   PhotoProduct,
+  Place,
   Player,
+  Product,
   Profile,
+  Reservation,
   Role,
+  ShopOrder,
+  SkillsEvent,
+  SkillsResult,
   Team,
   TeamCheckin,
+  TeamLodging,
   UmpireCode,
+  VenueSetting,
 } from './types';
 
 /** Table name -> row type. Keys are the Postgres table names. */
@@ -30,6 +38,14 @@ export interface Tables {
   umpire_codes: UmpireCode;
   team_checkins: TeamCheckin;
   follows: { id: string; userId: string; teamId: string };
+  places: Place;
+  venue_settings: VenueSetting;
+  products: Product;
+  shop_orders: ShopOrder;
+  reservations: Reservation;
+  skills_events: SkillsEvent;
+  skills_results: SkillsResult;
+  team_lodging: TeamLodging;
 }
 
 export type TableName = keyof Tables;
@@ -52,6 +68,35 @@ export interface UmpireWeek {
   label: string;
   games: Game[];
   teams: Pick<Team, 'id' | 'name'>[];
+}
+
+export interface PlaceOrderInput {
+  kind: 'apparel' | 'concession';
+  eventId: string | null;
+  items: { productId: string; qty: number; size?: string }[];
+  name: string;
+  phone: string;
+  /** Concessions: where to bring it. */
+  field: string;
+  spot: string;
+  notes: string;
+}
+
+export interface PlacedOrder {
+  id: string;
+  code: string;
+  totalCents: number;
+  payment: ShopOrder['payment'];
+}
+
+export interface ReservationInput {
+  placeId: string;
+  onDate: string;
+  atTime: string;
+  partySize: number;
+  name: string;
+  phone: string;
+  notes: string;
 }
 
 export interface InviteEmail {
@@ -124,6 +169,16 @@ export interface Backend {
   /** Starts payment for an order; returns a hosted checkout URL, or null if paid immediately (demo). */
   startCheckout(orderId: string): Promise<string | null>;
   registerPushToken(token: string, platform: string): Promise<void>;
+
+  // --- park life (no account needed) -------------------------------------------
+  /** Orders apparel (pay at pickup) or concessions (pay on delivery). Prices come from the database. */
+  placeOrder(input: PlaceOrderInput): Promise<PlacedOrder>;
+  /** An order's status by its number and pickup code (works for guests). */
+  orderStatus(id: string, code: string): Promise<Pick<ShopOrder, 'id' | 'kind' | 'status' | 'items' | 'totalCents' | 'deliveryField' | 'deliverySpot' | 'payment'>>;
+  requestReservation(input: ReservationInput): Promise<{ id: string; code: string }>;
+  reservationStatus(id: string, code: string): Promise<{ id: string; status: Reservation['status']; onDate: string; atTime: string; partySize: number; restaurant: string }>;
+  /** Staff: uploads a picture (site map, park photo, product) and returns its public URL. */
+  uploadImage(file: { uri: string; name: string; type: string }): Promise<string>;
 
   /** The week's field names in order, when the database keeps them per week. */
   weekFields?(eventId: string): Promise<string[]>;
