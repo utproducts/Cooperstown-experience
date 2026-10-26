@@ -29,7 +29,7 @@ export const ITINERARY: ItineraryItem[] = [
 
 export interface ChecklistItem {
   id: string;
-  group: 'Forms' | 'Uniform & gear' | 'Personal';
+  group: 'Forms' | 'Gear' | 'Personal';
   label: string;
 }
 
@@ -37,11 +37,10 @@ export const CHECKLIST: ChecklistItem[] = [
   { id: 'waiver', group: 'Forms', label: 'Participation waiver signed (player, parent, coach)' },
   { id: 'medical', group: 'Forms', label: 'Health history & physical exam form' },
   { id: 'insurance', group: 'Forms', label: 'Copy of insurance card' },
-  { id: 'pants', group: 'Uniform & gear', label: 'White baseball pants (knee length)' },
-  { id: 'belt', group: 'Uniform & gear', label: 'Team belt, socks & 2+ jerseys' },
-  { id: 'cleats', group: 'Uniform & gear', label: 'Cleats (check field rules) & turf shoes' },
-  { id: 'glove', group: 'Uniform & gear', label: 'Glove, bat(s), helmet, batting gloves' },
-  { id: 'catcher', group: 'Uniform & gear', label: 'Catcher’s gear (if needed)' },
+  { id: 'belt', group: 'Gear', label: 'Belt and baseball socks' },
+  { id: 'cleats', group: 'Gear', label: 'Cleats (check field rules) & turf shoes' },
+  { id: 'glove', group: 'Gear', label: 'Glove, bat(s), helmet, batting gloves' },
+  { id: 'catcher', group: 'Gear', label: 'Catcher’s gear (if needed)' },
   { id: 'bottle', group: 'Personal', label: 'Labeled water bottle' },
   { id: 'sun', group: 'Personal', label: 'Sunscreen, bug spray, hat' },
   { id: 'bedding', group: 'Personal', label: 'Twin bedding, pillow & towels for bunkhouse' },

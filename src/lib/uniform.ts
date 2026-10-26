@@ -8,6 +8,12 @@ export function uniformItems(event: Pick<EventWeek, 'settings'> | null | undefin
   return Array.isArray(items) && items.length ? items.map(String).filter(Boolean) : DEFAULT_UNIFORM_ITEMS;
 }
 
+/** Anything else handed out at check-in besides the uniform (settings.included), e.g. a wristband. */
+export function includedItems(event: Pick<EventWeek, 'settings'> | null | undefined): string[] {
+  const items = (event?.settings as { included?: unknown } | null | undefined)?.included;
+  return Array.isArray(items) ? items.map(String).filter(Boolean) : [];
+}
+
 /** "Jersey YL · Pants YM · Hat S/M", with "—" for a size nobody entered. */
 export function sizeLine(uniform: Record<string, string> | null | undefined, items: string[]): string {
   return items.map((i) => `${i} ${uniform?.[i] || '—'}`).join(' · ');

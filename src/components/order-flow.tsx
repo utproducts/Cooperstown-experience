@@ -16,11 +16,12 @@ import { Badge, Body, Button, Caption, Card, ErrorNote, Field, Row, Segmented, m
 type CartLine = { product: Product; size: string; qty: number };
 const lineKey = (l: { product: Product; size: string }) => `${l.product.id}|${l.size}`;
 
-export const DELIVERY_SPOTS = ['Home dugout', 'Away dugout', 'Stands (1st base side)', 'Stands (3rd base side)'];
+/** Where you're sitting at the field. A seat sign's QR code (Staff → Seat QR codes) fills it in. */
+export const DELIVERY_SPOTS = ['1st base side', '3rd base side', 'Behind home plate', 'Outfield'];
 
 /**
  * Browse, add to cart and check out. Apparel is paid at pickup; concessions are paid on delivery to a field and
- * spot (prefilled from a dugout's QR code). Prices are set by the database when the order is placed.
+ * seat (prefilled from a seat sign's QR code). Prices are set by the database when the order is placed.
  */
 export function OrderFlow({
   kind,
@@ -45,7 +46,9 @@ export function OrderFlow({
   const [phone, setPhone] = useState('');
   const [field, setField] = useState(initialField);
   const [spot, setSpot] = useState(initialSpot || DELIVERY_SPOTS[0]);
+  const [seat, setSeat] = useState('');
   const [notes, setNotes] = useState('');
+  const where = [field, spot, seat.trim()].filter(Boolean).join(', ');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
@@ -70,7 +73,7 @@ export function OrderFlow({
         <Text style={styles.big}>Order #{placed.id}</Text>
         <Body>
           {kind === 'concession'
-            ? `We’re bringing it to ${field}, ${spot}. Pay ${money(placed.totalCents)} when it arrives.`
+            ? `We’re bringing it to your seat: ${where}. Pay ${money(placed.totalCents)} when it arrives.`
             : `Pick it up at the Info & Pro Shop and pay ${money(placed.totalCents)} there.`}
         </Body>
         <Caption>Pickup code: {placed.code}. Track it under More → My orders & reservations.</Caption>
@@ -154,19 +157,22 @@ export function OrderFlow({
           </Row>
           {kind === 'concession' && (
             <>
-              <Caption>Deliver to</Caption>
+              <Caption style={{ fontWeight: '800', color: C.navy }}>Delivered to your seat</Caption>
+              <Caption>Which field?</Caption>
               {fields.length > 0 ? (
                 <Segmented value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: f }))} />
               ) : (
                 <Field placeholder="Field, e.g. Field 3" value={field} onChangeText={setField} />
               )}
+              <Caption>Where are you sitting?</Caption>
               <Segmented value={spot} onChange={setSpot} options={DELIVERY_SPOTS.map((s) => ({ value: s, label: s }))} />
+              <Field label="How do we find you? (optional)" value={seat} onChangeText={setSeat} placeholder="Top row of the bleachers, blue umbrella…" />
             </>
           )}
           <Field label="Name for the order" value={name} onChangeText={setName} />
           <Field label="Mobile (optional)" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
           <Field label="Notes (optional)" value={notes} onChangeText={setNotes} placeholder={kind === 'concession' ? 'No onions, extra ketchup…' : ''} />
-          <Caption>{kind === 'concession' ? 'Pay the runner when your order arrives (cash or card).' : 'Pay when you pick it up at the Info & Pro Shop.'} Online payment is coming soon.</Caption>
+          <Caption>{kind === 'concession' ? 'A runner brings it to your seat. Pay when it arrives (cash or card).' : 'Pay when you pick it up at the Info & Pro Shop.'} Online payment is coming soon.</Caption>
           <ErrorNote message={error} />
           <Button
             title={`Place order · ${money(total)}`}
@@ -184,10 +190,10 @@ export function OrderFlow({
                   name,
                   phone,
                   field: kind === 'concession' ? field : '',
-                  spot: kind === 'concession' ? spot : '',
+                  spot: kind === 'concession' ? [spot, seat.trim()].filter(Boolean).join(' · ') : '',
                   notes,
                 });
-                await saveReceipt({ kind, id: o.id, code: o.code, label: kind === 'concession' ? `Food to ${field}` : 'Shop order', at: new Date().toISOString() });
+                await saveReceipt({ kind, id: o.id, code: o.code, label: kind === 'concession' ? `Food to your seat, ${field}` : 'Shop order', at: new Date().toISOString() });
                 setCheckout(false);
                 setPlaced(o);
               } catch (e) {

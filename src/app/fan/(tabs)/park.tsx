@@ -28,7 +28,7 @@ export default function ParkHub() {
     { icon: 'bus', title: 'Trolley', subtitle: 'Skip the big hills: ride the loop', color: '#C9A227', href: '/fan/map?kind=trolley' },
   ];
   const eat: Tile[] = [
-    { icon: 'fast-food', title: 'Order to your dugout', subtitle: 'Concessions delivered to your field', color: '#E07A1F', href: '/fan/food' },
+    { icon: 'fast-food', title: 'Food to your seat', subtitle: 'Concessions delivered to your seat', color: '#E07A1F', href: '/fan/food' },
     { icon: 'restaurant', title: 'Restaurants', subtitle: count('restaurant') ? `${count('restaurant')} on site · menus & tables` : 'Menus and reservations', color: '#0E2340', href: '/fan/restaurants' },
     { icon: 'storefront', title: 'Vendors', subtitle: count('vendor') ? `${count('vendor')} on site` : 'Who’s at the park', color: '#7B3FA0', href: '/fan/places?kind=vendor' },
     { icon: 'shirt', title: 'Shop', subtitle: 'Hats, tees, pins & more', color: '#C8102E', href: '/fan/shop' },

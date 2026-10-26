@@ -7,10 +7,10 @@ import { APP_URL } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { usePlaces } from '@/data/venue';
 
-const SPOTS = ['Home dugout', 'Away dugout'];
+const SPOTS = ['1st base side', '3rd base side'];
 
-/** A card for each dugout: families scan it to order concessions straight to that spot. Print from the web. */
-export default function DugoutQr() {
+/** A sign for each side of the stands: families scan it to order concessions to their seat. Print from the web. */
+export default function SeatQr() {
   const d = useDirectorData();
   const fieldPlaces = usePlaces('field');
   const fields = fieldPlaces.data.length
@@ -19,8 +19,8 @@ export default function DugoutQr() {
   const base = APP_URL.replace(/\/$/, '');
   return (
     <Screen>
-      <H1>Dugout QR codes</H1>
-      <Caption>Post one in each dugout. Scanning it opens the concessions menu with delivery set to that field and dugout.</Caption>
+      <H1>Seat QR codes</H1>
+      <Caption>Post one on each side of the stands. Scanning it opens the concessions menu with delivery set to that field and side; families add where they’re sitting.</Caption>
       {Platform.OS === 'web' && <Button title="Print" icon="print" small onPress={() => window.print()} />}
       {fields.length === 0 && <Caption>Add fields under Site map & places (or build the schedule) first.</Caption>}
       <View style={styles.grid}>
@@ -29,7 +29,7 @@ export default function DugoutQr() {
             const url = `${base}/fan/food?field=${encodeURIComponent(f)}&spot=${encodeURIComponent(spot)}`;
             return (
               <View key={`${f}-${spot}`} style={styles.card}>
-                <Text style={styles.title}>Hungry? Order to your dugout</Text>
+                <Text style={styles.title}>Hungry? Delivered to your seat</Text>
                 <QRCode value={url} size={150} color={C.navy} backgroundColor={C.white} />
                 <Text style={styles.where}>{f}</Text>
                 <Text style={styles.spot}>{spot}</Text>

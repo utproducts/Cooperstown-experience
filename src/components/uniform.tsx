@@ -7,17 +7,27 @@ import { sizeCounts } from '@/lib/uniform';
 import { Caption } from './ui';
 
 /** At the desk: what to hand this player, one big tile per item. */
-export function UniformHandout({ uniform, items }: { uniform: Record<string, string> | undefined; items: string[] }) {
+export function UniformHandout({
+  uniform,
+  items,
+  label = 'HAND OUT',
+  missingText = 'No size',
+}: {
+  uniform: Record<string, string> | undefined;
+  items: string[];
+  label?: string;
+  missingText?: string;
+}) {
   return (
     <View style={{ gap: 6 }}>
-      <Text style={styles.label}>HAND OUT</Text>
+      <Text style={styles.label}>{label}</Text>
       <View style={styles.tiles}>
         {items.map((item) => {
           const size = uniform?.[item]?.trim();
           return (
             <View key={item} style={[styles.tile, !size && styles.tileMissing]}>
               <Text style={styles.item}>{item}</Text>
-              <Text style={[styles.size, !size && { color: C.warn }]}>{size || 'No size'}</Text>
+              <Text style={[styles.size, !size && { color: C.warn }]}>{size || missingText}</Text>
             </View>
           );
         })}

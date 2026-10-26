@@ -34,7 +34,7 @@ export default function VenueHub() {
         { icon: 'map', title: 'Site map & places', subtitle: 'Map, fields, parking, trolley, vendors, restaurants, things to do, lodging', href: '/director/places' },
         { icon: 'pricetags', title: 'Shop, concessions & menus', subtitle: 'Products, prices, sizes, restaurant menus', href: '/director/products' },
         { icon: 'images', title: 'Park photos & rules', subtitle: 'Header photos and what families can bring', href: '/director/park-info' },
-        { icon: 'qr-code', title: 'Dugout QR codes', subtitle: 'Print one for every dugout', href: '/director/dugout-qr' },
+        { icon: 'qr-code', title: 'Seat QR codes', subtitle: 'Signs for the stands: order food to your seat', href: '/director/dugout-qr' },
       ],
     },
   ];

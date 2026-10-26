@@ -183,7 +183,7 @@ export function buildSeed(now = new Date()): SeedTables {
 
   return {
     ...venue,
-    events: [{ ...event, settings: { ceremony: sampleCeremony(arrival, ceremonyField) } }, ...season],
+    events: [{ ...event, settings: { ceremony: sampleCeremony(arrival, ceremonyField), included: ['Player wristband', 'Bunkhouse bunk for the week', 'Official tournament pin'] } }, ...season],
     teams: [...teams, ...week1Teams],
     players,
     games,

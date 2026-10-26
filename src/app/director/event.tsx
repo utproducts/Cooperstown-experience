@@ -9,7 +9,7 @@ import type { EventWeek } from '@/data/types';
 import { randomToken } from '@/lib/codes';
 import { DEFAULT_TZ, localDateKey, relativeTime } from '@/lib/time';
 import { generateSeasonWeeks, weekRange, weekStatus } from '@/lib/weeks';
-import { uniformItems } from '@/lib/uniform';
+import { includedItems, uniformItems } from '@/lib/uniform';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULTS = {
@@ -82,6 +82,7 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
     latitude: String(event.latitude),
     longitude: String(event.longitude),
     uniformItems: uniformItems(event).join(', '),
+    included: includedItems(event).join(', '),
   });
   const [error, setError] = useState<string | null>(null);
   const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -123,6 +124,12 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
         onChangeText={set('uniformItems')}
         hint="Comma separated, e.g. Jersey, Pants, Hat. Each player gets a size for each; scanning a pass shows them."
       />
+      <Field
+        label="Also handed out at check-in"
+        value={form.included}
+        onChangeText={set('included')}
+        hint="Comma separated, e.g. Player wristband, Tournament pin. Families see these under What you get."
+      />
       <Row>
         <View style={{ flex: 1 }}>
           <Field label="Latitude (weather)" value={form.latitude} onChangeText={set('latitude')} keyboardType="numbers-and-punctuation" />
@@ -150,6 +157,7 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
               settings: {
                 ...(event.settings ?? {}),
                 uniformItems: [...new Set(form.uniformItems.split(',').map((x) => x.trim()).filter(Boolean))],
+                included: [...new Set(form.included.split(',').map((x) => x.trim()).filter(Boolean))],
               },
             });
             showMessage('Saved');

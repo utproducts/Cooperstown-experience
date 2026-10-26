@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { Badge, Body, Button, Caption, Card, Empty, Eyebrow, H1, H2, H3, Icon, ListItem, Progress, Row, Screen, Segmented, Stack } from '@/components/ui';
+import { UniformHandout } from '@/components/uniform';
 import { CHECKLIST } from '@/content/guide';
 import { C, Fonts, R, S } from '@/constants/theme';
 import { useTable } from '@/data';
@@ -14,6 +15,7 @@ import { useFanData } from '@/data/fan';
 import { usePlaces } from '@/data/venue';
 import { checkInPayload } from '@/lib/codes';
 import { formatDateTime, formatDay } from '@/lib/time';
+import { includedItems, uniformItems } from '@/lib/uniform';
 
 function useChecklist(playerId: string | undefined) {
   const key = `cxp-checklist-${playerId}`;
@@ -65,6 +67,8 @@ export default function PlayerPortal() {
   }
 
   const completed = CHECKLIST.filter((c) => done[c.id]).length;
+  const uniform = uniformItems(event);
+  const included = includedItems(event);
   const groups = [...new Set(CHECKLIST.map((c) => c.group))];
 
   return (
@@ -129,10 +133,41 @@ export default function PlayerPortal() {
         </Card>
       )}
 
-      <Card>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <H2 style={{ fontSize: 18 }}>Before you arrive</H2>
-          <Caption>
+      {/* Two lists on purpose: families kept packing what the Village hands out. */}
+      <Card style={[styles.listCard, { borderTopColor: C.green }]}>
+        <Row gap={S.sm}>
+          <View style={[styles.listIcon, { backgroundColor: C.greenSoft }]}>
+            <Icon name="gift" color={C.green} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.listTitle, { color: C.green }]}>What you get</Text>
+            <Caption>Handed out at check-in. No need to pack these.</Caption>
+          </View>
+        </Row>
+        <UniformHandout uniform={player.uniform} items={uniform} label={`${player.firstName.toUpperCase()}’S UNIFORM`} missingText="Size at check-in" />
+        {included.length > 0 && (
+          <Stack gap={4}>
+            <Caption style={{ fontWeight: '800', color: C.navy, marginTop: S.xs }}>ALSO INCLUDED</Caption>
+            {included.map((item) => (
+              <Row key={item} gap={S.md} style={{ paddingVertical: 4 }}>
+                <Icon name="checkmark-circle" color={C.green} size={20} />
+                <Body style={{ flex: 1 }}>{item}</Body>
+              </Row>
+            ))}
+          </Stack>
+        )}
+      </Card>
+
+      <Card style={[styles.listCard, { borderTopColor: C.red }]}>
+        <Row gap={S.sm}>
+          <View style={[styles.listIcon, { backgroundColor: C.redSoft }]}>
+            <Icon name="bag-handle" color={C.red} size={20} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.listTitle, { color: C.red }]}>What you need to bring</Text>
+            <Caption>Pack these yourself. Tap each one as it goes in the bag.</Caption>
+          </View>
+          <Caption style={{ fontWeight: '800' }}>
             {completed}/{CHECKLIST.length}
           </Caption>
         </Row>
@@ -175,6 +210,9 @@ const styles = StyleSheet.create({
   playerName: { fontFamily: Fonts.display, fontSize: 28, fontWeight: '700', color: C.white, textAlign: 'center' },
   playerMeta: { color: '#C9D4E5', fontSize: 15, fontWeight: '600' },
   qrWrap: { backgroundColor: C.white, padding: S.lg, borderRadius: R.lg, marginVertical: S.sm, borderWidth: 4, borderColor: C.red },
+  listCard: { borderTopWidth: 4 },
+  listIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  listTitle: { fontFamily: Fonts.display, fontSize: 20, fontWeight: '700' },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: S.md, paddingVertical: 6 },
   roster: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 6 },
   rosterItem: { flexDirection: 'row', alignItems: 'center', gap: S.sm, width: '50%', paddingRight: S.sm },

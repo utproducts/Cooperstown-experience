@@ -7,7 +7,7 @@ import { useFanData } from '@/data/fan';
 import { usePlaces, useParkPhoto } from '@/data/venue';
 
 /**
- * Concessions delivered to your field. A dugout's QR code opens this with ?field=Field%203&spot=Home%20dugout.
+ * Concessions delivered to your seat. A seat sign's QR code opens this with ?field=Field%203&spot=1st%20base%20side.
  */
 export default function Food() {
   const { field, spot } = useLocalSearchParams<{ field?: string; spot?: string }>();
@@ -22,8 +22,8 @@ export default function Food() {
     : [...new Set(d.games.map((g) => g.field))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   return (
     <Screen refreshing={products.loading} onRefresh={products.refresh}>
-      <Hero image={photo} eyebrow="Concessions" title="Order to your dugout" subtitle="Hot dogs, drinks and snacks brought right to your field. Pay when it arrives." />
-      {field ? <Badge label={`Delivering to ${field}${spot ? ` · ${spot}` : ''}`} tone="green" icon="location" /> : null}
+      <Hero image={photo} eyebrow="Concessions" title="Delivered to your seat" subtitle="Hot dogs, drinks and snacks brought right to your seat at any field. Pay when it arrives." />
+      {field ? <Badge label={`Delivering to your seat: ${field}${spot ? ` · ${spot}` : ''}`} tone="green" icon="location" /> : null}
       <OrderFlow
         kind="concession"
         eventId={eventId}

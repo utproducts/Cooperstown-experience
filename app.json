@@ -64,6 +64,13 @@
           "photosPermission": "Staff choose photos of the park, the site map and products to show families.",
           "cameraPermission": "Staff take photos of the park and products to show families."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Shows where you are on the park map so you can find your field, parking, food and restrooms.",
+          "motionUsagePermission": false
+        }
       ]
     ],
     "experiments": {
