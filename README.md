@@ -86,7 +86,7 @@ The publishable key is safe to ship. Every rule lives in the database's row-leve
 - **Umpires** use their own code (`ump_games` / `ump_score`) to enter final scores and baseballs used. Each score records which umpire's code entered it.
 - **Shared rules with the admin site:** a week with scores can't be rebuilt, seeding waits until every pool game is final, and a score can't change once the next bracket game has one.
 
-**Not there yet:** parent accounts, invite codes, player rosters with QR passes, push alerts, meetings and photos. Those screens are hidden when the app is connected to this database. Their tables are drafted in `supabase/phase2-proposal/` and need sign-off before anything is added to the production database. See that folder's README.
+**Not there yet:** parent accounts, invite codes, player rosters with QR passes, push alerts, meetings and photos. Those screens are hidden when the app is connected to this database. Their tables are proposed in utproducts/cooperstown PR #1 (`supabase/proposals/`, tested, not applied) and need sign-off before anything is added to the production database.
 
 ## LeagueApps import format
 
@@ -116,6 +116,7 @@ Directors can download a template from the import screen.
 
 - **Shareable preview:** `npm run build:preview` makes `dist-preview/`, a self-contained demo build that runs from any sub-path. It's used for the claude.ai preview link. It runs on demo data unless the Supabase variables are set at build time.
 
+- **Live web app:** https://utproducts.github.io/Cooperstown-experience/ runs on the Cooperstown database. `.github/workflows/pages.yml` runs the tests, builds with `scripts/build-pages.sh` and publishes the `gh-pages` branch on every push.
 - **Web:** `npx expo export -p web` creates `dist/`. Host it anywhere static (Vercel, Netlify, Cloudflare Pages) with a SPA fallback to `index.html`, so links like `/follow/CODE` and `/director/...` resolve.
 - **iOS and Android:**
   ```bash
