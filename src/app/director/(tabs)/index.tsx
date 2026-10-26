@@ -12,6 +12,7 @@ import { C, R, S } from '@/constants/theme';
 import { useBackend, useTable } from '@/data';
 import { useDirectorData } from '@/data/director';
 import type { Game } from '@/data/types';
+import { useParkPhoto } from '@/data/venue';
 import { dateRange, formatDay, localDateKey } from '@/lib/time';
 import { useNow } from '@/lib/use-now';
 
@@ -28,6 +29,7 @@ export default function DirectorDashboard() {
   const teamCheckins = useTable('team_checkins');
   const [editing, setEditing] = useState<Game | null>(null);
   const now = useNow();
+  const photo = useParkPhoto(1);
   const event = d.event;
   const tz = event?.timezone;
   const today = localDateKey(new Date(now).toISOString(), tz);
@@ -46,6 +48,7 @@ export default function DirectorDashboard() {
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
       <DemoRoleSwitch />
       <Hero
+        image={photo}
         eyebrow="Staff view"
         title={event?.name ?? 'No event yet'}
         subtitle={event ? `${formatDay(event.startsOn)} – ${formatDay(event.endsOn)}${dayIdx >= 0 ? ` · Day ${dayIdx + 1}` : ''} · ${event.venue}` : 'Create the season’s weeks under More → Weeks'}

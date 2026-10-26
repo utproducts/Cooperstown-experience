@@ -42,6 +42,8 @@ export default function DirectorMore() {
       </Card>
       <DemoRoleSwitch />
       <Card style={{ gap: 0 }}>
+        <ListItem icon="map" title="Park & venue" subtitle="Map, orders, reservations, shop, menus, skills, bunkhouses, ceremonies" onPress={() => router.push('/director/venue' as never)} />
+        <Divider />
         <ListItem icon="calendar" title="Weeks" subtitle="Switch weeks, publish, umpire codes, dates and venue" onPress={() => router.push('/director/event')} />
         <Divider />
         {backend.features.meetings && (
