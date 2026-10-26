@@ -42,6 +42,12 @@ export interface CheckInResult {
   alreadyCheckedIn: boolean;
 }
 
+export interface UmpireWeek {
+  event: Pick<EventWeek, 'id' | 'name' | 'startsOn' | 'endsOn' | 'timezone'>;
+  games: Game[];
+  teams: Pick<Team, 'id' | 'name'>[];
+}
+
 export interface InviteEmail {
   to: string;
   name: string | null;
@@ -86,6 +92,12 @@ export interface Backend {
   /** Starts payment for an order; returns a hosted checkout URL, or null if paid immediately (demo). */
   startCheckout(orderId: string): Promise<string | null>;
   registerPushToken(token: string, platform: string): Promise<void>;
+
+  // --- umpires (no account: the week's umpire code unlocks scoring) ---------
+  /** The week's games for an umpire code; throws with a readable message for a bad code. */
+  umpireGames(code: string): Promise<UmpireWeek>;
+  /** Saves a final score and baseballs used. Notifies both teams and advances a bracket winner. */
+  umpireScore(code: string, gameId: string, homeScore: number, awayScore: number, baseballs: number | null): Promise<void>;
   /** Demo only: emails that "would have been sent". */
   outbox?(): InviteEmail[];
 }

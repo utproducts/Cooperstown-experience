@@ -4,9 +4,10 @@ import { normalizeTeamCode, randomToken } from '../lib/codes';
 import type { Backend, InviteEmail, Query, TableName, Tables } from './backend';
 import { buildSeed, DEMO_USERS, type SeedTables } from './seed';
 import { weekRange } from '../lib/weeks';
+import { saveScore } from './services';
 import type { Profile, Role } from './types';
 
-const STORAGE_KEY = 'cxp-demo-v2';
+const STORAGE_KEY = 'cxp-demo-v3';
 
 /**
  * In-memory backend with sample data, persisted to device storage. Used when
@@ -237,6 +238,27 @@ export function createDemoBackend(appUrl: string): Backend {
     },
 
     async registerPushToken() {},
+
+    async umpireGames(code) {
+      await readyPromise;
+      const ev = db.events.find((e) => e.umpireCode && e.umpireCode === code.trim().toUpperCase());
+      if (!ev) throw new Error('That umpire code isn’t valid. Check with the tournament director.');
+      return {
+        event: { id: ev.id, name: ev.name, startsOn: ev.startsOn, endsOn: ev.endsOn, timezone: ev.timezone },
+        games: clone(db.games.filter((g) => g.eventId === ev.id).sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.field.localeCompare(b.field, undefined, { numeric: true }))),
+        teams: db.teams.filter((t) => t.eventId === ev.id).map((t) => ({ id: t.id, name: t.name })),
+      };
+    },
+
+    async umpireScore(code, gameId, homeScore, awayScore, baseballs) {
+      const ev = db.events.find((e) => e.umpireCode && e.umpireCode === code.trim().toUpperCase());
+      if (!ev) throw new Error('That umpire code isn’t valid.');
+      const game = db.games.find((g) => g.id === gameId && g.eventId === ev.id);
+      if (!game) throw new Error('That game isn’t in this week.');
+      if (!game.homeTeamId || !game.awayTeamId) throw new Error('The teams for this game aren’t known yet.');
+      if (game.stage === 'bracket' && homeScore === awayScore) throw new Error('Bracket games can’t end in a tie.');
+      await saveScore(backend, clone(game), db.teams, homeScore, awayScore, 'final', baseballs);
+    },
 
     outbox: () => outbox,
   };

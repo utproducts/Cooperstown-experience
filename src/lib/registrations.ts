@@ -31,7 +31,12 @@ export type RegistrationField =
   | 'memberId'
   | 'status'
   | 'program'
-  | 'programStart';
+  | 'programStart'
+  | 'organization'
+  | 'coachName'
+  | 'coachEmail'
+  | 'coachPhone'
+  | 'rosterSize';
 
 const ALIASES: Record<RegistrationField, string[]> = {
   firstName: ['first name', 'player first name', 'participant first name', 'member first name', 'athlete first name', 'first'],
@@ -54,6 +59,11 @@ const ALIASES: Record<RegistrationField, string[]> = {
   memberId: ['member id', 'user id', 'leagueapps user id', 'player id', 'registration id', 'participant id'],
   status: ['registration status', 'status', 'payment status'],
   program: ['program', 'program name', 'session', 'session name', 'season', 'season name', 'event', 'event name', 'tournament week', 'week'],
+  organization: ['organization', 'organization name', 'club', 'club name', 'org'],
+  coachName: ['team rep name', 'coach name', 'head coach', 'head coach name', 'contact name', 'manager name'],
+  coachEmail: ['team rep email address', 'team rep email', 'coach email', 'head coach email', 'contact email'],
+  coachPhone: ['team rep phone number', 'team rep phone', 'coach phone', 'head coach phone', 'contact phone'],
+  rosterSize: ['number of players', 'players', 'roster size', 'player count'],
   programStart: ['program start date', 'session start date', 'season start date', 'event start date', 'start date', 'week start date', 'arrival date'],
 };
 
@@ -75,7 +85,7 @@ export function detectColumns(headers: string[]): ColumnMapping {
   // Specific fields first so e.g. "Parent 1 Email" isn't claimed as "Email".
   const order: RegistrationField[] = [
     'guardianFirst', 'guardianLast', 'guardianName', 'guardianEmail', 'guardianPhone',
-    'programStart', 'program', 'teamId', 'team', 'firstName', 'lastName', 'fullName', 'role', 'jersey', 'birthDate',
+    'programStart', 'program', 'organization', 'coachName', 'coachEmail', 'coachPhone', 'rosterSize', 'teamId', 'team', 'firstName', 'lastName', 'fullName', 'role', 'jersey', 'birthDate',
     'email', 'phone', 'city', 'state', 'memberId', 'status',
   ];
   for (const field of order) {
@@ -87,6 +97,11 @@ export function detectColumns(headers: string[]): ColumnMapping {
         break;
       }
     }
+  }
+  // Team-level exports (one row per team) call the team's column just "Name".
+  if (!mapping.team && !mapping.teamId && mapping.fullName && !mapping.firstName) {
+    mapping.team = mapping.fullName;
+    delete mapping.fullName;
   }
   return mapping;
 }
@@ -110,6 +125,8 @@ export interface ImportedTeam {
   name: string;
   city: string;
   state: string;
+  organization: string | null;
+  rosterSize: number | null;
   externalId: string | null;
   coachName: string | null;
   coachEmail: string | null;
@@ -128,6 +145,8 @@ export interface ImportResult {
   mapping: ColumnMapping;
   rowCount: number;
   skipped: number;
+  /** True for a team-level export (no player rows): teams and team reps only. */
+  teamsOnly: boolean;
 }
 
 const INACTIVE_STATUS = /cancel|withdraw|refund|declin|inactive|waitlist/i;
@@ -169,9 +188,7 @@ export function parseRegistrations(csv: string, override?: ColumnMapping): Impor
   if (!mapping.team && !mapping.teamId) {
     issues.push({ row: 1, message: 'No team column found. Add a "Team" column or map one manually.' });
   }
-  if (!mapping.firstName && !mapping.fullName) {
-    issues.push({ row: 1, message: 'No player name column found ("First Name"/"Last Name" or "Name").' });
-  }
+  const teamsOnly = !mapping.firstName && !mapping.fullName;
 
   const get = (rec: Record<string, string>, f: RegistrationField) => (mapping[f] ? rec[mapping[f]!] : undefined);
 
@@ -201,16 +218,19 @@ export function parseRegistrations(csv: string, override?: ColumnMapping): Impor
         program,
         programStartDate,
         name: (teamName ?? `Team ${teamExt}`).replace(/\s*\([^)]*\)\s*$/, '').trim(),
+        organization: nullIfEmpty(get(rec, 'organization')),
+        rosterSize: Number.isInteger(Number(get(rec, 'rosterSize'))) && nullIfEmpty(get(rec, 'rosterSize')) ? Number(get(rec, 'rosterSize')) : null,
         city: nullIfEmpty(get(rec, 'city')) ?? fromName.city,
         state: (nullIfEmpty(get(rec, 'state')) ?? fromName.state).toUpperCase(),
         externalId: teamExt,
-        coachName: null,
-        coachEmail: null,
-        coachPhone: null,
+        coachName: nullIfEmpty(get(rec, 'coachName')),
+        coachEmail: cleanEmail(get(rec, 'coachEmail')),
+        coachPhone: nullIfEmpty(get(rec, 'coachPhone')),
         players: [],
       };
       teams.set(key, team);
     }
+    if (teamsOnly) return;
 
     let first = nullIfEmpty(get(rec, 'firstName'));
     let last = nullIfEmpty(get(rec, 'lastName'));
@@ -260,5 +280,6 @@ export function parseRegistrations(csv: string, override?: ColumnMapping): Impor
     mapping,
     rowCount: records.length,
     skipped,
+    teamsOnly,
   };
 }

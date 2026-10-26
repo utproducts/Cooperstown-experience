@@ -34,6 +34,7 @@ export function GameCard({
   timeZone,
   onPress,
   showDay,
+  showBaseballs,
 }: {
   game: Game;
   teams: Team[];
@@ -41,6 +42,8 @@ export function GameCard({
   timeZone?: string;
   onPress?: () => void;
   showDay?: boolean;
+  /** Staff views: show baseballs used when recorded. */
+  showBaseballs?: boolean;
 }) {
   const hasScore = game.homeScore !== null && game.awayScore !== null;
   const homeWon = game.status === 'final' && hasScore && game.homeScore! > game.awayScore!;
@@ -73,9 +76,11 @@ export function GameCard({
       </Row>
       {line(game.awayTeamId, game.awayLabel, game.awayScore, awayWon)}
       {line(game.homeTeamId, game.homeLabel, game.homeScore, homeWon)}
-      {(game.round || game.note || game.bracket) && (
+      {(game.round || game.note || game.bracket || showBaseballs) && (
         <Caption numberOfLines={2}>
-          {[game.bracket && `${game.bracket} bracket`, game.round, game.note].filter(Boolean).join(' · ')}
+          {[game.bracket && `${game.bracket} bracket`, game.round, game.note, showBaseballs && game.baseballsUsed !== null && `${game.baseballsUsed} baseballs`]
+            .filter(Boolean)
+            .join(' · ')}
         </Caption>
       )}
     </Card>

@@ -104,6 +104,31 @@ check('create pending order', !(await as('parent', `insert into photo_orders (us
 check('cannot mark own order paid', (await as('parent', `update photo_orders set status='paid' returning id`)).length === 0);
 check('notification insert does not fail without vault secrets', true);
 
+// --- umpires: the week's code unlocks scoring, nothing else
+await as('dir', `update events set umpire_code = 'UMPX1' where id = $1`, [evId]);
+const pool = await as('dir', `insert into games (event_id, field, starts_at, home_team_id, away_team_id, stage, number) values ($1, 'Field 1', now(), $2, $3, 'pool', 1) returning id`, [evId, tId, t2Id]);
+const fin = await as('dir', `insert into games (event_id, field, starts_at, stage, number, bracket) values ($1, 'Field 2', now(), 'bracket', 3, 'Championship') returning id`, [evId]);
+const semi = await as('dir', `insert into games (event_id, field, starts_at, home_team_id, away_team_id, stage, number, bracket, winner_to_game_id, winner_to_slot) values ($1, 'Field 1', now(), $2, $3, 'bracket', 2, 'Championship', $4, 'away') returning id`, [evId, tId, t2Id, fin[0].id]);
+check('families cannot read the umpire code', !!(await as('parent', `select umpire_code from events`)).error);
+check('families still read events', (await as('parent', `select id, name from events`)).length === 1);
+check('directors read umpire codes via function', (await as('dir', `select * from event_umpire_codes()`))[0]?.umpire_code === 'UMPX1');
+check('fans get no codes from the function', (await as('parent', `select * from event_umpire_codes()`)).length === 0);
+const bad = await as('stranger', `select ump_games('NOPE') as r`);
+check('bad umpire code is refused', !!bad[0]?.r?.error);
+const ug = await as('stranger', `select ump_games(' umpx1 ') as r`);
+check('umpire code unlocks the week\'s games', ug[0]?.r?.games?.length === 3 && ug[0].r.event.name === 'Week 1');
+check('umpire score saved with baseballs', !(await as('stranger', `select ump_score('UMPX1', $1, 4, 2, 11) as r`, [pool[0].id]))[0]?.r?.error);
+const g1 = (await db.query(`select home_score, away_score, baseballs_used, status from games where id = $1`, [pool[0].id])).rows[0];
+check('score + baseballs stored as final', g1.home_score === 4 && g1.away_score === 2 && g1.baseballs_used === 11 && g1.status === 'final', g1);
+check('final notifies both teams once', (await db.query(`select count(*)::int as n from notifications where kind = 'score'`)).rows[0].n === 1);
+await as('stranger', `select ump_score('UMPX1', $1, 5, 2, 12)`, [pool[0].id]);
+check('fixing a score does not notify again', (await db.query(`select count(*)::int as n from notifications where kind = 'score'`)).rows[0].n === 1);
+check('bracket tie refused', !!(await as('stranger', `select ump_score('UMPX1', $1, 3, 3, 9) as r`, [semi[0].id]))[0]?.r?.error);
+await as('stranger', `select ump_score('UMPX1', $1, 1, 6, 9)`, [semi[0].id]);
+check('bracket winner advances', (await db.query(`select away_team_id from games where id = $1`, [fin[0].id])).rows[0].away_team_id === t2Id);
+check('teams not known yet: refused', !!(await as('stranger', `select ump_score('UMPX1', $1, 1, 0, 5) as r`, [fin[0].id]))[0]?.r?.error);
+check('umpire code cannot reach another week', !!(await as('stranger', `select ump_score('UMPX1', gen_random_uuid(), 1, 0, 5) as r`))[0]?.r?.error);
+
 await db.exec(`delete from director_allowlist where email = 'dir@x.io'`);
 check('removing from allowlist demotes', (await db.query(`select role from profiles where id='${ids.dir}'`)).rows[0].role === 'fan');
 console.log(`\n${pass} passed, ${fail} failed`);

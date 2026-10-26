@@ -1,8 +1,12 @@
-import { buildPoolMatchups, dailySlots, fieldNames, placeMatchups } from '../lib/schedule';
+import { teamPrefix } from '../lib/codes';
+import { fieldNames } from '../lib/schedule';
+import { planWeek } from '../lib/week-schedule';
 import { generateSeasonWeeks } from '../lib/weeks';
 import { addMinutes, DEFAULT_TZ, zonedToIso, localDateKey } from '../lib/time';
 import type { Tables } from './backend';
+import { planToGameRows } from './services';
 import type { Game, Player, Team } from './types';
+import { WEEK1_2027_START, WEEK1_2027_TEAMS } from './week1-2027';
 
 /**
  * Sample data for demo mode. Dates are relative to "now" so the demo always
@@ -64,7 +68,7 @@ export function buildSeed(now = new Date()): SeedTables {
   const eventId = 'evt-demo';
   const event = {
     id: eventId,
-    name: 'Week 4',
+    name: 'Sample week',
     startsOn: arrival,
     endsOn: addDays(arrival, 5),
     venue: 'Cooperstown Baseball Complex',
@@ -73,9 +77,9 @@ export function buildSeed(now = new Date()): SeedTables {
     longitude: -74.9605,
     checkInWindow: '12:00 PM – 6:00 PM on arrival day',
     timezone: DEFAULT_TZ,
+    umpireCode: 'UMPDEMO',
   };
 
-  const pools = ['A', 'B'];
   const teams: Team[] = TEAMS.map(([name, city, state], i) => ({
     id: `team-${i + 1}`,
     eventId,
@@ -83,7 +87,9 @@ export function buildSeed(now = new Date()): SeedTables {
     city,
     state,
     code: `${name.split(' ').pop()!.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4).padEnd(4, 'X')}-${['7K2Q', 'M4TX', 'H8RN', 'B3WZ', 'Q9PL', 'C6VD', 'D2JS', 'R5NK', 'H7MA', 'B4TS', 'O3RC', 'G8TR', 'T6ND', 'P2SP', 'K9NG', 'S5LG'][i]}`,
-    pool: pools[i % 2],
+    pool: null,
+    organization: name,
+    rosterSize: 12,
     coachName: `Coach ${LAST[(i * 5) % LAST.length]}`,
     coachEmail: `coach${i + 1}@demo.app`,
     coachPhone: `555-01${String(i).padStart(2, '0')}`,
@@ -115,56 +121,63 @@ export function buildSeed(now = new Date()): SeedTables {
     }
   });
 
-  // Cooperstown format: 6 pool games per team on Days 1–4, 12 fields, 2-hour games from 8 AM to 10 PM.
-  const grid = {
-    days: [arrival, addDays(arrival, 1), addDays(arrival, 2), addDays(arrival, 3)],
-    times: dailySlots('08:00', '22:00', 120),
-    fields: fieldNames(12),
-  };
-  const matchups = buildPoolMatchups(teams, 6);
-  // Two games a day spreads the demo over all four pool days.
-  const placed = placeMatchups(matchups, grid, { minGapMinutes: 240, maxGamesPerTeamPerDay: 2 });
+  // The sample week runs on the same engine as a real week: 6 pool games each, then three brackets.
+  const days = Array.from({ length: 6 }, (_, i) => ({ date: addDays(arrival, i), start: '08:00', end: '22:00', pool: i <= 3, bracket: i >= 3 }));
+  const plan = planWeek(
+    teams.map((t) => ({ id: t.id, name: t.name, club: t.organization ?? '', state: t.state })),
+    { fields: fieldNames(12), days, slotMinutes: 120, poolGames: 6, maxPerDay: 2, bracketMaxPerDay: 4, restSlots: 1, brackets: ['Championship', 'Monster', 'Cooper'] },
+  );
+  const rows = planToGameRows(plan, eventId, DEFAULT_TZ);
+  const idOf = (key: string) => `game-${rows.find((r) => r.key === key)!.number}`;
   const nowMs = now.getTime();
-  const games: Game[] = placed.scheduled
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.field.localeCompare(b.field))
-    .map((m, i) => {
-      const start = new Date(m.startsAt).getTime();
-      const end = new Date(addMinutes(m.startsAt, 120)).getTime();
-      const done = end < nowMs;
-      const live = !done && start <= nowMs;
-      const hs = Math.floor(rand() * 11);
-      let as = Math.floor(rand() * 11);
-      if (as === hs) as = (as + 1 + Math.floor(rand() * 3)) % 12;
-      return {
-        id: `game-${i + 1}`,
-        eventId,
-        field: m.field,
-        startsAt: m.startsAt,
-        homeTeamId: m.homeTeamId,
-        awayTeamId: m.awayTeamId,
-        homeLabel: null,
-        awayLabel: null,
-        homeScore: done || live ? (live ? Math.min(hs, 3) : hs) : null,
-        awayScore: done || live ? (live ? Math.min(as, 2) : as) : null,
-        status: done ? 'final' : live ? 'live' : 'scheduled',
-        stage: 'pool',
-        bracket: null,
-        round: `Pool ${m.pool}`,
-        number: i + 1,
-        winnerToGameId: null,
-        winnerToSlot: null,
-        note: null,
-      };
-    });
+  const games: Game[] = rows.map(({ key, winnerToKey, ...row }) => {
+    const start = new Date(row.startsAt).getTime();
+    const end = new Date(addMinutes(row.startsAt, 120)).getTime();
+    // Only pool games get sample scores; bracket games wait for seeds.
+    const done = row.stage === 'pool' && end < nowMs;
+    const live = row.stage === 'pool' && !done && start <= nowMs;
+    const hs = Math.floor(rand() * 11);
+    let as = Math.floor(rand() * 11);
+    if (as === hs) as = (as + 1 + Math.floor(rand() * 3)) % 12;
+    return {
+      ...row,
+      id: idOf(key),
+      winnerToGameId: winnerToKey ? idOf(winnerToKey) : null,
+      homeScore: done || live ? (live ? Math.min(hs, 3) : hs) : null,
+      awayScore: done || live ? (live ? Math.min(as, 2) : as) : null,
+      status: done ? 'final' : live ? 'live' : 'scheduled',
+      baseballsUsed: done ? 8 + Math.floor(rand() * 9) : null,
+    };
+  });
+
+  // The real 2027 season: rolling 6-day weeks from May 30. Week 1 holds the actual registered teams, ready to schedule.
+  const season = generateSeasonWeeks(WEEK1_2027_START, 16).map((w, i) => ({
+    ...event,
+    ...w,
+    id: `evt-2027-w${i + 1}`,
+    umpireCode: i === 0 ? 'UMP2027' : null,
+  }));
+  const week1Teams: Team[] = WEEK1_2027_TEAMS.map((t, i) => ({
+    id: `w1-team-${i + 1}`,
+    eventId: season[0].id,
+    name: t.name,
+    city: t.city,
+    state: t.state,
+    code: `${teamPrefix(t.name)}-${(1296 + i * 37).toString(36).toUpperCase()}`,
+    pool: null,
+    organization: t.organization,
+    rosterSize: t.players,
+    coachName: null,
+    coachEmail: null,
+    coachPhone: null,
+    externalId: null,
+  }));
 
   const at = (dayOffset: number, time: string) => zonedToIso(addDays(arrival, dayOffset), time);
 
   return {
-    // The demo week (with all the data) sits in the middle of a 7-week season.
-    events: generateSeasonWeeks(addDays(arrival, -18), 7).map((w, i) =>
-      i === 3 ? event : { ...event, ...w, id: `evt-week-${i + 1}` },
-    ),
-    teams,
+    events: [event, ...season],
+    teams: [...teams, ...week1Teams],
     players,
     games,
     follows: [{ id: 'follow-1', userId: DEMO_USERS.fan.id, teamId: 'team-1' }],

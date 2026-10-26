@@ -14,6 +14,8 @@ export interface EventWeek {
   /** Arrival / check-in window shown to families, e.g. "Fri 12:00 PM – 6:00 PM". */
   checkInWindow: string;
   timezone: string;
+  /** Code umpires enter to score this week's games (no account needed). Directors only. */
+  umpireCode: string | null;
 }
 
 export interface Team {
@@ -28,6 +30,10 @@ export interface Team {
    */
   code: string | null;
   pool: string | null;
+  /** Club/organization; pool play never pairs two teams from the same one. */
+  organization: string | null;
+  /** Roster size from a team-level registration export, before player rows are imported. */
+  rosterSize: number | null;
   coachName: string | null;
   coachEmail: string | null;
   coachPhone: string | null;
@@ -63,9 +69,12 @@ export interface Game {
   startsAt: string;
   homeTeamId: string | null;
   awayTeamId: string | null;
-  /** Shown when a team is not yet known, e.g. "Winner G41". */
+  /** Shown when a team is not yet known, e.g. "Winner G41" or "Seed #5". */
   homeLabel: string | null;
   awayLabel: string | null;
+  /** Bracket games: which overall pool-play seed fills this side once pool play is final. */
+  homeSeed: number | null;
+  awaySeed: number | null;
   homeScore: number | null;
   awayScore: number | null;
   status: GameStatus;
@@ -79,6 +88,8 @@ export interface Game {
   winnerToGameId: string | null;
   winnerToSlot: 'home' | 'away' | null;
   note: string | null;
+  /** Baseballs used in the game, entered by the umpire or director. */
+  baseballsUsed: number | null;
 }
 
 export type NotificationKind = 'general' | 'weather' | 'schedule' | 'score' | 'checkin';

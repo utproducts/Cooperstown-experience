@@ -1,127 +1,91 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Badge, Body, Button, Caption, Card, Divider, ErrorNote, Field, H1, H2, H3, Row, Screen, Stack, confirmAction, showMessage } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
 import { useBackend } from '@/data';
 import { useDirectorData } from '@/data/director';
-import { generateBrackets, generatePoolPlay, setPools } from '@/data/services';
-import {
-  buildBracket,
-  buildPoolMatchups,
-  computeStandings,
-  dailySlots,
-  fieldNames,
-  overallSeeds,
-  placeMatchups,
-  scheduleBrackets,
-  splitIntoBrackets,
-} from '@/lib/schedule';
-import { dateRange, formatDateTime, formatDay, formatTime } from '@/lib/time';
+import { planEventWeek, postWeekSchedule, seedBrackets, type WeekBuildSettings } from '@/data/services';
+import { fieldNames } from '@/lib/schedule';
+import { dateRange, formatDay } from '@/lib/time';
+import { planSummary } from '@/lib/week-schedule';
 
-const splitList = (s: string) =>
-  s
-    .split(',')
-    .map((x) => x.trim())
-    .filter(Boolean);
-const TIME = /^\d{1,2}:\d{2}$/;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$|^24:00$/;
 const to12h = (t: string) => {
   const [h, m] = t.split(':').map(Number);
   return `${((h + 11) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''} ${h % 24 < 12 ? 'AM' : 'PM'}`;
 };
+const when = (dateTime: string) => {
+  const [date, time] = dateTime.split(' ');
+  return `${formatDay(date)} ${to12h(time)}`;
+};
 
-/** Day chips: tap to include or exclude a day. */
-function DayPicker({ days, selected, onChange }: { days: string[]; selected: string[]; onChange: (d: string[]) => void }) {
-  return (
-    <Row style={{ flexWrap: 'wrap' }} gap={6}>
-      {days.map((day, i) => (
-        <Button
-          key={day}
-          title={`Day ${i + 1} · ${formatDay(day)}`}
-          small
-          variant={selected.includes(day) ? 'dark' : 'secondary'}
-          onPress={() => onChange(selected.includes(day) ? selected.filter((x) => x !== day) : [...selected, day].sort())}
-        />
-      ))}
-    </Row>
-  );
+interface DayRow {
+  start: string;
+  end: string;
+  pool: boolean;
+  bracket: boolean;
 }
 
-function Fit({ ok, children }: { ok: boolean; children: React.ReactNode }) {
-  return <View style={{ backgroundColor: ok ? C.greenSoft : C.warnSoft, padding: S.md, borderRadius: R.md, gap: 4 }}>{children}</View>;
+/** Cooperstown's week: pool play Days 1–4, brackets from Day 4 (one slot after the last pool game) to the end. */
+function defaultDays(count: number): DayRow[] {
+  return Array.from({ length: count }, (_, i) => ({ start: '08:00', end: '22:00', pool: i <= count - 3, bracket: i >= count - 3 }));
 }
 
 export default function Builder() {
   const backend = useBackend();
   const d = useDirectorData();
   const event = d.event;
-  const days = event ? dateRange(event.startsOn, event.endsOn) : [];
+  const dates = event ? dateRange(event.startsOn, event.endsOn) : [];
 
-  // Cooperstown format
   const [fieldCount, setFieldCount] = useState('12');
-  const [gameMinutes, setGameMinutes] = useState('120');
-  const [dayStart, setDayStart] = useState('08:00');
-  const [dayEnd, setDayEnd] = useState('22:00');
-  // Pools
-  const [poolSize, setPoolSize] = useState('8');
-  // Pool play
+  const [slotMinutes, setSlotMinutes] = useState('120');
   const [poolGames, setPoolGames] = useState('6');
-  const [poolDaysState, setPoolDays] = useState<string[] | null>(null);
-  const [poolMaxPerDay, setPoolMaxPerDay] = useState('3');
-  const [restMinutes, setRestMinutes] = useState('120');
-  // Brackets
-  const [bracketNames, setBracketNames] = useState('Championship, Monster, Cooper');
-  const [bracketDaysState, setBracketDays] = useState<string[] | null>(null);
+  const [maxPerDay, setMaxPerDay] = useState('3');
   const [bracketMaxPerDay, setBracketMaxPerDay] = useState('4');
-  const [lateUntil, setLateUntil] = useState('24:00');
+  const [restSlots, setRestSlots] = useState('1');
+  const [bracketNames, setBracketNames] = useState('Championship, Monster, Cooper');
+  const [daysState, setDays] = useState<DayRow[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Defaults until the director picks: pool play on the first four days, brackets on the last two.
-  const poolDays = poolDaysState ?? days.slice(0, Math.max(1, days.length - 2));
-  const bracketDays = bracketDaysState ?? days.slice(-2);
+  const days = daysState && daysState.length === dates.length ? daysState : defaultDays(dates.length);
+  const setDay = (i: number, patch: Partial<DayRow>) => setDays(days.map((x, j) => (j === i ? { ...x, ...patch } : x)));
 
-  const minutes = Math.max(30, Number(gameMinutes) || 120);
-  const fields = fieldNames(Math.max(1, Number(fieldCount) || 1));
-  const times = TIME.test(dayStart) && TIME.test(dayEnd) ? dailySlots(dayStart, dayEnd, minutes) : [];
-  const lateTimes = TIME.test(lateUntil) ? dailySlots(dayEnd, lateUntil, minutes) : [];
-  const names = splitList(bracketNames);
-  const pooled = d.teams.filter((t) => t.pool);
-  const pools = [...new Set(d.teams.map((t) => t.pool ?? '—'))].sort();
-  const poolCount = Math.max(1, Math.round(d.teams.length / Math.max(2, Number(poolSize) || 8)));
-  const existingPool = d.games.filter((g) => g.stage === 'pool');
-  const existingBracket = d.games.filter((g) => g.stage === 'bracket');
-  const gamesPerTeam = Math.max(1, Number(poolGames) || 1);
-  const poolOpts = { minGapMinutes: minutes + Math.max(0, Number(restMinutes) || 0), maxGamesPerTeamPerDay: Math.max(1, Number(poolMaxPerDay) || 1) };
-
-  const poolPreview = (() => {
-    if (!event || d.teams.length < 2 || times.length === 0) return null;
-    const matchups = buildPoolMatchups(d.teams, gamesPerTeam);
-    const res = placeMatchups(matchups, { days: poolDays, times, fields, timeZone: event.timezone }, poolOpts);
-    const last = res.scheduled.reduce((m, g) => (g.startsAt > m ? g.startsAt : m), '');
-    return { total: matchups.length, placed: res.scheduled.length, capacity: poolDays.length * times.length * fields.length, last };
-  })();
-
-  const standings = computeStandings(d.teams, d.games);
-  const seeds = overallSeeds(standings);
-  const plans = splitIntoBrackets(seeds, names.length ? names : ['Championship']);
-  const bracketSched = {
-    days: bracketDays,
-    times,
-    lateTimes,
-    fields,
-    gameMinutes: minutes,
-    maxGamesPerTeamPerDay: Math.max(1, Number(bracketMaxPerDay) || 1),
+  const num = (v: string, lo: number, hi: number, fallback: number) => {
+    const n = Number(v);
+    return Number.isInteger(n) && n >= lo && n <= hi ? n : fallback;
   };
-  const bracketPreview = (() => {
-    if (!event || seeds.length < 2 || times.length === 0) return null;
-    const brackets = plans.filter((p) => p.teamIds.length >= 2).map((p) => ({ name: p.name, drafts: buildBracket(p.teamIds) }));
-    const res = scheduleBrackets(brackets, { ...bracketSched, timeZone: event.timezone, existing: existingPool });
-    const last = res.placed.reduce((m, g) => (g.startsAt > m ? g.startsAt : m), '');
-    return { total: brackets.reduce((n, b) => n + b.drafts.length, 0), unscheduled: res.unscheduled.length, usedLate: res.usedLate, last };
-  })();
-  const unfinishedPool = existingPool.filter((g) => g.status !== 'final' && g.status !== 'cancelled').length;
+  const settings: WeekBuildSettings = {
+    fields: fieldNames(num(fieldCount, 1, 40, 12)),
+    days: dates.map((date, i) => ({ date, ...days[i] })),
+    slotMinutes: num(slotMinutes, 30, 300, 120),
+    poolGames: num(poolGames, 1, 12, 6),
+    maxPerDay: num(maxPerDay, 1, 6, 3),
+    bracketMaxPerDay: num(bracketMaxPerDay, 1, 6, 4),
+    restSlots: num(restSlots, 0, 4, 1),
+    brackets: bracketNames
+      .split(',')
+      .map((b) => b.trim())
+      .filter(Boolean),
+  };
+  const invalid =
+    !event ? 'Create the season’s weeks first under More → Weeks.'
+    : d.teams.length < 2 ? 'Import this week’s teams first.'
+    : settings.days.some((x) => !TIME.test(x.start) || !TIME.test(x.end) || x.end <= x.start) ? 'Each day needs a first game and a later end time (24-hour, e.g. 08:00 and 22:00).'
+    : !settings.days.some((x) => x.pool) ? 'Choose at least one pool play day.'
+    : !settings.days.some((x) => x.bracket) ? 'Choose at least one bracket day.'
+    : !settings.brackets?.length ? 'Name at least one bracket.'
+    : null;
+  const plan = invalid ? null : planEventWeek(d.teams, settings);
+  const summary = plan ? planSummary(d.teams.map((t) => ({ id: t.id, name: t.name, club: t.organization ?? '', state: t.state })), plan, settings) : null;
+
+  const posted = { pool: d.games.filter((g) => g.stage === 'pool'), bracket: d.games.filter((g) => g.stage === 'bracket') };
+  const finalPool = posted.pool.filter((g) => g.status === 'final').length;
+  const scored = d.games.filter((g) => g.homeScore !== null).length;
+  const seedsWaiting = posted.bracket.filter((g) => (g.homeSeed && !g.homeTeamId) || (g.awaySeed && !g.awayTeamId)).length;
+  const seedsFilled = posted.bracket.some((g) => g.homeSeed && g.homeTeamId);
 
   async function run(key: string, fn: () => Promise<void>) {
     setBusy(key);
@@ -151,9 +115,45 @@ export default function Builder() {
         <Button title="Done" variant="ghost" small onPress={() => router.push('/director/schedule')} />
       </Row>
       <Body style={{ color: C.muted }}>
-        {event.name} · {days.length}-day week · {d.teams.length} teams. Pool play sets the seeds, then every team advances to single-elimination bracket play.
+        {event.name} · {formatDay(event.startsOn)} – {formatDay(event.endsOn)} · {d.teams.length} teams. Pool play sets the seeds; then every team goes into a
+        single-elimination bracket.
       </Body>
       <ErrorNote message={error} />
+
+      {(posted.pool.length > 0 || posted.bracket.length > 0) && (
+        <Card style={{ borderColor: C.green }}>
+          <H2 style={{ fontSize: 18 }}>Posted schedule</H2>
+          <Row style={{ flexWrap: 'wrap' }}>
+            <Badge label={`${posted.pool.length} pool games`} tone="navy" />
+            <Badge label={`${posted.bracket.length} bracket games`} tone="navy" />
+            <Badge label={`${finalPool}/${posted.pool.length} pool games final`} tone={finalPool === posted.pool.length && posted.pool.length ? 'green' : 'muted'} />
+          </Row>
+          {posted.bracket.length > 0 && (
+            <>
+              <Body>
+                {seedsWaiting === 0 && seedsFilled
+                  ? 'Brackets are seeded. Winners move on automatically as scores come in.'
+                  : `Bracket games show “Seed #N” until you seed them from the pool play standings.`}
+              </Body>
+              <Button
+                title={seedsFilled ? 'Re-seed brackets from standings' : 'Seed brackets from pool play'}
+                icon="git-network"
+                variant="dark"
+                loading={busy === 'seed'}
+                onPress={async () => {
+                  const open = posted.pool.length - finalPool;
+                  const msg = `${open ? `${open} pool games aren't final yet, so seeds could still change. ` : ''}Every team will be told which bracket they're in.`;
+                  if (!(await confirmAction('Seed the brackets?', msg, 'Seed brackets'))) return;
+                  run('seed', async () => {
+                    const r = await seedBrackets(backend, event, d.teams, d.games);
+                    showMessage('Brackets seeded', `${r.seeded} teams placed into their bracket games.`);
+                  });
+                }}
+              />
+            </>
+          )}
+        </Card>
+      )}
 
       <Card>
         <H2 style={{ fontSize: 18 }}>Format</H2>
@@ -162,172 +162,137 @@ export default function Builder() {
             <Field label="Fields" value={fieldCount} onChangeText={setFieldCount} keyboardType="number-pad" />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="Game length (min)" value={gameMinutes} onChangeText={setGameMinutes} keyboardType="number-pad" />
+            <Field label="Game slot (min)" value={slotMinutes} onChangeText={setSlotMinutes} keyboardType="number-pad" />
           </View>
         </Row>
         <Row>
           <View style={{ flex: 1 }}>
-            <Field label="First game" value={dayStart} onChangeText={setDayStart} autoCapitalize="none" />
+            <Field label="Pool games per team" value={poolGames} onChangeText={setPoolGames} keyboardType="number-pad" hint={`+ at least 1 bracket game = ${settings.poolGames + 1} minimum`} />
           </View>
           <View style={{ flex: 1 }}>
-            <Field label="Last game ends by" value={dayEnd} onChangeText={setDayEnd} autoCapitalize="none" />
+            <Field label="Rest between games (slots)" value={restSlots} onChangeText={setRestSlots} keyboardType="number-pad" />
           </View>
         </Row>
-        <Caption>
-          Start times: {times.map(to12h).join(', ') || '—'} · {times.length * fields.length} games a day across {fields.length} fields
-        </Caption>
+        <Row>
+          <View style={{ flex: 1 }}>
+            <Field label="Max games a day" value={maxPerDay} onChangeText={setMaxPerDay} keyboardType="number-pad" hint="Includes a team’s first bracket game" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Field label="Max a day, team still winning" value={bracketMaxPerDay} onChangeText={setBracketMaxPerDay} keyboardType="number-pad" />
+          </View>
+        </Row>
+        <Field label="Brackets, best pool records first" value={bracketNames} onChangeText={setBracketNames} hint="Every team advances; seeds split as evenly as possible, top seeds get byes." />
       </Card>
 
       <Card>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <H2 style={{ fontSize: 18 }}>1 · Pools</H2>
-          <Badge label={`${pooled.length}/${d.teams.length} assigned`} tone={pooled.length === d.teams.length && d.teams.length ? 'green' : 'muted'} />
-        </Row>
-        <Row>
-          <View style={{ flex: 1 }}>
-            <Field label="Teams per pool" value={poolSize} onChangeText={setPoolSize} keyboardType="number-pad" hint={`${poolCount} pools for ${d.teams.length} teams`} />
-          </View>
-          <Button title="Auto-assign" style={{ alignSelf: 'center' }} loading={busy === 'pools'} disabled={d.teams.length === 0} onPress={() => run('pools', () => setPools(backend, d.teams, poolCount))} />
-        </Row>
-        <Caption>Teams are spread evenly (snake order). Tap a pool letter to move a team.</Caption>
-        {pools.map((p) => (
-          <Stack key={p} gap={4}>
-            <H3>Pool {p}</H3>
-            {d.teams
-              .filter((t) => (t.pool ?? '—') === p)
-              .map((t) => (
-                <Row key={t.id} style={{ justifyContent: 'space-between' }}>
-                  <Body style={{ flex: 1 }} numberOfLines={1}>
-                    {t.name}
-                  </Body>
-                  <Row gap={4} style={{ flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '60%' }}>
-                    {Array.from({ length: poolCount }, (_, i) => String.fromCharCode(65 + i)).map((letter) => (
-                      <Button
-                        key={letter}
-                        title={letter}
-                        small
-                        variant={t.pool === letter ? 'dark' : 'secondary'}
-                        onPress={() => backend.update('teams', t.id, { pool: letter })}
-                        style={{ minWidth: 36, paddingHorizontal: 8 }}
-                      />
-                    ))}
-                  </Row>
-                </Row>
-              ))}
-          </Stack>
-        ))}
-      </Card>
-
-      <Card>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <H2 style={{ fontSize: 18 }}>2 · Pool play (seeding)</H2>
-          {existingPool.length > 0 && <Badge label={`${existingPool.length} games posted`} tone="green" />}
-        </Row>
-        <Field
-          label="Pool games per team"
-          value={poolGames}
-          onChangeText={setPoolGames}
-          keyboardType="number-pad"
-          hint={`${gamesPerTeam} pool + at least 1 bracket game = ${gamesPerTeam + 1} games minimum per team`}
-        />
-        <Caption>Pool play days</Caption>
-        <DayPicker days={days} selected={poolDays} onChange={setPoolDays} />
-        <Row>
-          <View style={{ flex: 1 }}>
-            <Field label="Max games per team per day" value={poolMaxPerDay} onChangeText={setPoolMaxPerDay} keyboardType="number-pad" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Field label="Min. rest between games (min)" value={restMinutes} onChangeText={setRestMinutes} keyboardType="number-pad" />
-          </View>
-        </Row>
-        {poolPreview && (
-          <Fit ok={poolPreview.placed === poolPreview.total}>
-            <Body style={{ fontWeight: '700' }}>
-              {poolPreview.placed} of {poolPreview.total} pool games fit ({poolPreview.capacity} slots)
-            </Body>
-            {poolPreview.placed === poolPreview.total && poolPreview.last && <Caption>Last pool game: {formatDateTime(poolPreview.last, event.timezone)}</Caption>}
-            {poolPreview.placed < poolPreview.total && <Caption>Add a pool day, allow more games per day, or shorten the rest time.</Caption>}
-          </Fit>
-        )}
-        <Button
-          title={existingPool.length ? 'Regenerate pool play' : 'Generate pool play'}
-          icon="flash"
-          loading={busy === 'pool'}
-          disabled={!poolPreview || poolPreview.placed < poolPreview.total || pooled.length !== d.teams.length}
-          onPress={async () => {
-            if (existingPool.length && !(await confirmAction('Replace pool play?', `This deletes ${existingPool.length} pool games (and their scores).`, 'Replace'))) return;
-            run('pool', async () => {
-              const r = await generatePoolPlay(backend, event, d.teams, gamesPerTeam, { days: poolDays, times, fields }, poolOpts, { replaceExisting: true });
-              showMessage('Pool play posted', `${r.created} games scheduled. Families can see them now.`);
-            });
-          }}
-        />
-        {pooled.length !== d.teams.length && <Caption>Assign every team to a pool first.</Caption>}
-      </Card>
-
-      <Card>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <H2 style={{ fontSize: 18 }}>3 · Brackets (single elimination)</H2>
-          {existingBracket.length > 0 && <Badge label={`${existingBracket.length} games posted`} tone="green" />}
-        </Row>
-        {unfinishedPool > 0 && <Badge label={`${unfinishedPool} pool games not final — seeds may still change`} tone="warn" icon="alert-circle" />}
-        <Field label="Brackets, top seeds first" value={bracketNames} onChangeText={setBracketNames} hint="Every team advances. Seeds are split evenly, top tier first." />
-        <Caption>Bracket days</Caption>
-        <DayPicker days={days} selected={bracketDays} onChange={setBracketDays} />
-        <Row>
-          <View style={{ flex: 1 }}>
-            <Field label="Max games per day (teams still winning)" value={bracketMaxPerDay} onChangeText={setBracketMaxPerDay} keyboardType="number-pad" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Field label="Late games may run until" value={lateUntil} onChangeText={setLateUntil} autoCapitalize="none" hint="Used only if needed to finish" />
-          </View>
-        </Row>
-
-        {plans.map((p) => (
-          <View key={p.name} style={{ gap: 4 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <H3>{p.name}</H3>
-              <Caption>{p.teamIds.length ? `Seeds ${seeds.indexOf(p.teamIds[0]) + 1}–${seeds.indexOf(p.teamIds.at(-1)!) + 1} · ${p.teamIds.length} teams · ${Math.max(0, p.teamIds.length - 1)} games` : 'No teams'}</Caption>
+        <H2 style={{ fontSize: 18 }}>Days</H2>
+        <Caption>Bracket games start one slot after the last pool game, so the last pool day can also be a bracket day.</Caption>
+        {dates.map((date, i) => (
+          <View key={date} style={styles.dayRow}>
+            <View style={{ minWidth: 110 }}>
+              <Body style={{ fontWeight: '700' }}>Day {i + 1}</Body>
+              <Caption>{formatDay(date)}</Caption>
+            </View>
+            <Row gap={6}>
+              <Button title="Pool" small variant={days[i].pool ? 'dark' : 'secondary'} onPress={() => setDay(i, { pool: !days[i].pool })} />
+              <Button title="Bracket" small variant={days[i].bracket ? 'dark' : 'secondary'} onPress={() => setDay(i, { bracket: !days[i].bracket })} />
             </Row>
-            <Caption numberOfLines={2}>
-              {p.teamIds
-                .slice(0, 6)
-                .map((id) => `#${seeds.indexOf(id) + 1} ${d.teams.find((t) => t.id === id)?.name ?? ''}`)
-                .join(' · ')}
-              {p.teamIds.length > 6 ? ` · +${p.teamIds.length - 6} more` : ''}
-            </Caption>
+            <Row gap={6} style={{ flex: 1, minWidth: 180 }}>
+              <View style={{ flex: 1 }}>
+                <Field value={days[i].start} onChangeText={(v) => setDay(i, { start: v })} autoCapitalize="none" accessibilityLabel={`Day ${i + 1} first game`} />
+              </View>
+              <Caption>to</Caption>
+              <View style={{ flex: 1 }}>
+                <Field value={days[i].end} onChangeText={(v) => setDay(i, { end: v })} autoCapitalize="none" accessibilityLabel={`Day ${i + 1} last game ends`} />
+              </View>
+            </Row>
           </View>
         ))}
-        {bracketPreview && (
-          <Fit ok={bracketPreview.unscheduled === 0}>
-            <Body style={{ fontWeight: '700' }}>
-              {bracketPreview.total - bracketPreview.unscheduled} of {bracketPreview.total} bracket games fit
-            </Body>
-            {bracketPreview.unscheduled === 0 && bracketPreview.last && (
-              <Caption>
-                Last game (final): {formatDay(bracketPreview.last, event.timezone)} at {formatTime(bracketPreview.last, event.timezone)}
-                {bracketPreview.usedLate ? ' · uses late games after ' + to12h(dayEnd) : ''}
-              </Caption>
+      </Card>
+
+      <Card>
+        <H2 style={{ fontSize: 18 }}>Plan</H2>
+        {invalid && <Body style={{ color: C.warn }}>{invalid}</Body>}
+        {plan && summary && (
+          <Stack>
+            {plan.problems.length > 0 ? (
+              <View style={[styles.fit, { backgroundColor: C.warnSoft }]}>
+                {plan.problems.map((p) => (
+                  <Body key={p}>{p}</Body>
+                ))}
+              </View>
+            ) : (
+              <View style={[styles.fit, { backgroundColor: C.greenSoft }]}>
+                <Body style={{ fontWeight: '700' }}>
+                  {plan.games.length} games fit: {summary.poolGames} pool, {plan.games.length - summary.poolGames} bracket
+                </Body>
+              </View>
             )}
-            {bracketPreview.unscheduled > 0 && <Caption>Add a bracket day, allow more games per day, or allow later games.</Caption>}
-          </Fit>
+            <Row style={{ flexWrap: 'wrap' }}>
+              <Badge label={`${summary.minPerTeam === summary.maxPerTeam ? summary.minPerTeam : `${summary.minPerTeam}–${summary.maxPerTeam}`} pool games each`} tone="navy" />
+              <Badge label={`Max ${summary.maxGamesInADay} a day`} tone="navy" />
+              <Badge label={`${summary.sameStateGames} same-state game${summary.sameStateGames === 1 ? '' : 's'}`} tone="navy" />
+              <Badge label="Home/away balanced" tone="green" />
+              <Badge label="No same-club games" tone="green" />
+            </Row>
+            <H3>Games per day</H3>
+            {summary.perDay.map((day, i) => (
+              <Row key={day.date} style={styles.tableRow}>
+                <Text style={styles.cellDay}>
+                  Day {i + 1} · {formatDay(day.date)}
+                </Text>
+                <Text style={styles.cellNum}>{day.games}</Text>
+                <Caption style={{ flex: 1 }}>
+                  {day.pool && day.games - day.pool ? `${day.pool} pool, ${day.games - day.pool} bracket` : day.pool ? 'Pool play' : day.games ? 'Bracket play' : '—'}
+                </Caption>
+              </Row>
+            ))}
+            <H3>Brackets</H3>
+            {plan.brackets.map((b) => (
+              <Row key={b.name} style={styles.tableRow}>
+                <Text style={styles.cellDay}>{b.name}</Text>
+                <Text style={styles.cellNum}>{b.teams}</Text>
+                <Caption style={{ flex: 1 }}>
+                  Seeds {b.seeds} · {b.byes} byes
+                </Caption>
+              </Row>
+            ))}
+            <H3>Bracket rounds</H3>
+            {summary.bracketRounds.map((r) => (
+              <Row key={r.label} style={styles.tableRow}>
+                <Text style={[styles.cellDay, { minWidth: 190 }]}>{r.label}</Text>
+                <Text style={styles.cellNum}>{r.games}</Text>
+                <Caption style={{ flex: 1 }}>{r.from === r.to ? when(r.from) : `${when(r.from)} – ${when(r.to)}`}</Caption>
+              </Row>
+            ))}
+            <Divider />
+            <Button
+              title={posted.pool.length || posted.bracket.length ? 'Replace the posted schedule' : 'Post the week schedule'}
+              icon="flash"
+              loading={busy === 'post'}
+              disabled={plan.problems.length > 0}
+              onPress={async () => {
+                if (d.games.length) {
+                  const msg = `This deletes the ${d.games.length} posted games${scored ? `, including ${scored} with scores` : ''}, and posts ${plan.games.length} new ones.`;
+                  if (!(await confirmAction('Replace the schedule?', msg, 'Replace'))) return;
+                }
+                run('post', async () => {
+                  const r = await postWeekSchedule(backend, event, plan);
+                  showMessage('Schedule posted', `${r.pool} pool games and ${r.bracket} bracket games. Families and coaches can see them now.`);
+                });
+              }}
+            />
+          </Stack>
         )}
-        <Divider />
-        <Button
-          title={existingBracket.length ? 'Rebuild brackets' : 'Build brackets'}
-          icon="git-network"
-          loading={busy === 'bracket'}
-          disabled={!bracketPreview || bracketPreview.unscheduled > 0}
-          onPress={async () => {
-            const msg = `${unfinishedPool ? `${unfinishedPool} pool games aren't final, so seeds may change. ` : ''}${existingBracket.length ? `The current brackets (${existingBracket.length} games) will be replaced. ` : ''}Every team will be told which bracket they're in.`;
-            if (!(await confirmAction('Post brackets?', msg, 'Post brackets'))) return;
-            run('bracket', async () => {
-              const r = await generateBrackets(backend, event, plans, bracketSched);
-              showMessage('Brackets posted', `${r.created} games across ${plans.filter((p) => p.teamIds.length >= 2).length} brackets.${r.usedLate ? ' Some games run late.' : ''}`);
-            });
-          }}
-        />
       </Card>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  dayRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: S.md, paddingVertical: S.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },
+  fit: { padding: S.md, borderRadius: R.md, gap: 4 },
+  tableRow: { paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, gap: S.md },
+  cellDay: { minWidth: 140, fontWeight: '600', color: C.ink },
+  cellNum: { width: 36, textAlign: 'right', fontWeight: '800', color: C.navy, fontVariant: ['tabular-nums'] },
+});

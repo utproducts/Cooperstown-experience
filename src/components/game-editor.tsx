@@ -32,6 +32,7 @@ export function GameEditor({
   const [mode, setMode] = useState<Mode>('score');
   const [home, setHome] = useState(game.homeScore?.toString() ?? '');
   const [away, setAway] = useState(game.awayScore?.toString() ?? '');
+  const [balls, setBalls] = useState(game.baseballsUsed?.toString() ?? '');
   const [date, setDate] = useState(() => localDateKey(game.startsAt, event.timezone));
   const [time, setTime] = useState(() => localTimeKey(game.startsAt, event.timezone));
   const [field, setField] = useState(game.field);
@@ -57,7 +58,7 @@ export function GameEditor({
     }
   }
 
-  const parsed = (v: string) => (v.trim() === '' ? null : Math.max(0, Math.min(99, parseInt(v, 10) || 0)));
+  const parsed = (v: string) => (v.trim() === '' ? null : Math.max(0, Math.min(500, parseInt(v, 10) || 0)));
   const scoreRow = (name: string, value: string, set: (v: string) => void) => (
     <Row style={{ justifyContent: 'space-between' }}>
       <Text numberOfLines={1} style={styles.teamName}>
@@ -65,7 +66,7 @@ export function GameEditor({
       </Text>
       <Row gap={6}>
         <Button title="−" variant="secondary" small onPress={() => set(String(Math.max(0, (parseInt(value, 10) || 0) - 1)))} />
-        <TextInput value={value} onChangeText={(t) => set(t.replace(/\D/g, '').slice(0, 2))} keyboardType="number-pad" style={styles.scoreInput} placeholder="–" />
+        <TextInput value={value} onChangeText={(t) => set(t.replace(/\D/g, '').slice(0, 3))} keyboardType="number-pad" style={styles.scoreInput} placeholder="–" />
         <Button title="+" variant="secondary" small onPress={() => set(String((parseInt(value, 10) || 0) + 1))} />
       </Row>
     </Row>
@@ -91,12 +92,13 @@ export function GameEditor({
         <>
           {scoreRow(awayName, away, setAway)}
           {scoreRow(homeName, home, setHome)}
+          {scoreRow('Baseballs used', balls, setBalls)}
           <Row style={{ flexWrap: 'wrap' }}>
             <Button
               title="Save as live"
               variant="secondary"
               loading={busy}
-              onPress={() => run(() => saveScore(backend, game, teams, parsed(home) ?? 0, parsed(away) ?? 0, 'live'))}
+              onPress={() => run(() => saveScore(backend, game, teams, parsed(home) ?? 0, parsed(away) ?? 0, 'live', parsed(balls)))}
               style={{ flexGrow: 1 }}
             />
             <Button
@@ -104,7 +106,7 @@ export function GameEditor({
               icon="flag"
               loading={busy}
               disabled={parsed(home) === null || parsed(away) === null || (game.stage === 'bracket' && parsed(home) === parsed(away))}
-              onPress={() => run(() => saveScore(backend, game, teams, parsed(home), parsed(away), 'final'))}
+              onPress={() => run(() => saveScore(backend, game, teams, parsed(home), parsed(away), 'final', parsed(balls)))}
               style={{ flexGrow: 1 }}
             />
           </Row>

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { GameEditor, GameEditorHint } from '@/components/game-editor';
 import { GamesByDay } from '@/components/schedule-views';
 import { Sheet } from '@/components/sheet';
-import { Body, Button, Caption, ErrorNote, Field, H1, Row, Screen, Segmented, showMessage } from '@/components/ui';
+import { Badge, Body, Button, Caption, ErrorNote, Field, H1, Row, Screen, Segmented, showMessage } from '@/components/ui';
 import { useBackend } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { delayGames } from '@/data/services';
@@ -34,7 +34,7 @@ export default function DirectorGames() {
   function exportCsv() {
     const name = (id: string | null, l: string | null) => d.teams.find((t) => t.id === id)?.name ?? l ?? '';
     const csv = toCsv(
-      ['Game', 'Date', 'Time', 'Field', 'Stage', 'Bracket', 'Round', 'Away', 'Home', 'Away Score', 'Home Score', 'Status'],
+      ['Game', 'Date', 'Time', 'Field', 'Stage', 'Bracket', 'Round', 'Away', 'Home', 'Away Score', 'Home Score', 'Status', 'Baseballs Used'],
       d.games.map((g) => [
         `G${g.number}`,
         localDateKey(g.startsAt, tz),
@@ -48,6 +48,7 @@ export default function DirectorGames() {
         g.awayScore,
         g.homeScore,
         g.status,
+        g.baseballsUsed,
       ]),
     );
     shareTextFile(`schedule-${d.event?.startsOn ?? 'event'}.csv`, csv);
@@ -62,6 +63,7 @@ export default function DirectorGames() {
         <Button title="Export CSV" icon="download" variant="secondary" small onPress={exportCsv} />
       </Row>
       <GameEditorHint />
+      <BaseballsSummary games={d.games} />
       <Segmented
         value={stage}
         onChange={setStage}
@@ -72,7 +74,7 @@ export default function DirectorGames() {
           { value: 'bracket', label: 'Brackets' },
         ]}
       />
-      <GamesByDay games={games} teams={d.teams} timeZone={tz} onPressGame={setEditing} emptyText="No games yet — use Build schedule." />
+      <GamesByDay games={games} teams={d.teams} timeZone={tz} onPressGame={setEditing} emptyText="No games yet — use Build schedule." showBaseballs />
       {editing && d.event && <GameEditor key={editing.id} game={editing} event={d.event} teams={d.teams} games={d.games} onClose={() => setEditing(null)} />}
       {bulk && d.event && (
         <BulkDelay
@@ -163,5 +165,19 @@ function BulkDelay({
       />
       <ErrorNote message={error} />
     </Sheet>
+  );
+}
+
+function BaseballsSummary({ games }: { games: Game[] }) {
+  const recorded = games.filter((g) => g.baseballsUsed !== null);
+  if (recorded.length === 0) return null;
+  const total = recorded.reduce((n, g) => n + (g.baseballsUsed ?? 0), 0);
+  const finals = games.filter((g) => g.status === 'final').length;
+  return (
+    <Row style={{ flexWrap: 'wrap' }}>
+      <Badge label={`${total} baseballs used`} tone="navy" icon="baseball" />
+      <Badge label={`avg ${(total / recorded.length).toFixed(1)} a game`} tone="muted" />
+      {finals > recorded.length && <Badge label={`${finals - recorded.length} final games missing a count`} tone="warn" />}
+    </Row>
   );
 }

@@ -25,6 +25,9 @@ function snakeize(row: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
+/** Readable event columns (the umpire code is director-only, merged in from an RPC). */
+const EVENT_COLUMNS = 'id, name, starts_on, ends_on, venue, address, latitude, longitude, check_in_window, timezone, created_at';
+
 /** Fields the client never writes directly (owned by the database). */
 const READ_ONLY: Partial<Record<TableName, string[]>> = { teams: ['code'], meeting_slots: ['bookedCount'] };
 
@@ -98,13 +101,18 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
 
     async select(table, query) {
       const source = readSource(table);
-      const columns = table === 'teams' && isDirector() ? '*, team_codes(code)' : '*';
+      const columns = table === 'teams' && isDirector() ? '*, team_codes(code)' : table === 'events' ? EVENT_COLUMNS : '*';
       let q = client.from(source).select(columns);
       for (const [k, v] of Object.entries(query?.eq ?? {})) q = q.eq(toSnake(k), v as never);
       if (query?.in) q = q.in(toSnake(query.in.column), query.in.values as never[]);
       if (query?.order) q = q.order(toSnake(query.order.column), { ascending: query.order.ascending ?? true });
       const { data, error } = await q.limit(5000);
       fail(error);
+      if (table === 'events') {
+        const codes = isDirector() ? ((await client.rpc('event_umpire_codes')).data ?? []) : [];
+        const byId = new Map((codes as { id: string; umpire_code: string | null }[]).map((c) => [c.id, c.umpire_code]));
+        return ((data ?? []) as unknown as { id: string }[]).map((row) => camelize({ ...row, umpire_code: byId.get(row.id) ?? null })) as Tables[typeof table][];
+      }
        
       return (data ?? []).map((row: any) => {
         if (table === 'teams') {
@@ -123,7 +131,7 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
         strip.forEach((k) => delete copy[k]);
         return snakeize(copy);
       });
-      const { data, error } = await client.from(table).insert(payload).select();
+      const { data, error } = await client.from(table).insert(payload).select(table === 'events' ? EVENT_COLUMNS : '*');
       fail(error);
       const created = (data ?? []).map((r) => camelize<Record<string, unknown>>(r));
       if (table === 'teams') {
@@ -193,6 +201,29 @@ export function createSupabaseBackend(url: string, anonKey: string): Backend {
       const { data, error } = await client.functions.invoke('create-checkout', { body: { orderId } });
       fail(error);
       return data?.url ?? null;
+    },
+
+    async umpireGames(code) {
+      const { data, error } = await client.rpc('ump_games', { p_code: code.trim().toUpperCase() });
+      fail(error);
+      if (data?.error) throw new Error(data.error);
+      return {
+        event: camelize(data.event),
+        games: (data.games ?? []).map((g: unknown) => camelize(g)),
+        teams: data.teams ?? [],
+      };
+    },
+
+    async umpireScore(code, gameId, homeScore, awayScore, baseballs) {
+      const { data, error } = await client.rpc('ump_score', {
+        p_code: code.trim().toUpperCase(),
+        p_game: gameId,
+        p_home: homeScore,
+        p_away: awayScore,
+        p_balls: baseballs,
+      });
+      fail(error);
+      if (data?.error) throw new Error(data.error);
     },
 
     async registerPushToken(token, platform) {

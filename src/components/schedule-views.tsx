@@ -16,6 +16,7 @@ export function GamesByDay({
   timeZone,
   onPressGame,
   emptyText = 'No games scheduled yet.',
+  showBaseballs,
 }: {
   games: Game[];
   teams: Team[];
@@ -23,6 +24,7 @@ export function GamesByDay({
   timeZone?: string;
   onPressGame?: (g: Game) => void;
   emptyText?: string;
+  showBaseballs?: boolean;
 }) {
   const days = useMemo(() => [...new Set(games.map((g) => localDateKey(g.startsAt, timeZone)))].sort(), [games, timeZone]);
   const today = localDateKey(new Date().toISOString(), timeZone);
@@ -43,7 +45,7 @@ export function GamesByDay({
           {games
             .filter((g) => localDateKey(g.startsAt, timeZone) === d)
             .map((g) => (
-              <GameCard key={g.id} game={g} teams={teams} highlightTeamIds={highlight} timeZone={timeZone} onPress={onPressGame && (() => onPressGame(g))} />
+              <GameCard key={g.id} game={g} teams={teams} highlightTeamIds={highlight} timeZone={timeZone} onPress={onPressGame && (() => onPressGame(g))} showBaseballs={showBaseballs} />
             ))}
         </Stack>
       ))}
@@ -68,7 +70,7 @@ export function StandingsTable({ teams, games, highlight = [] }: { teams: Team[]
       {pools.map((pool) => (
         <Card key={pool} style={{ gap: 0, paddingVertical: S.sm }}>
           <Row style={styles.headRow}>
-            <H3 style={{ flex: 1 }}>Pool {pool}</H3>
+            <H3 style={{ flex: 1 }}>{pool === 'All' ? 'Pool play' : `Pool ${pool}`}</H3>
             {headers.map((h) => (
               <Text key={h} style={styles.headCell}>
                 {h}
@@ -92,7 +94,7 @@ export function StandingsTable({ teams, games, highlight = [] }: { teams: Team[]
             ))}
         </Card>
       ))}
-      <Caption>Ranked by win %, run differential (max ±8 per game), runs allowed, then runs scored.</Caption>
+      <Caption>Ranked by win % (a tie counts half), head to head (two teams tied), fewest runs allowed, run differential (max ±8 a game), then most runs scored.</Caption>
     </Stack>
   );
 }

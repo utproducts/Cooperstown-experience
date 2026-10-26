@@ -79,3 +79,22 @@ describe('program / week detection', () => {
     ]);
   });
 });
+
+describe('team-level export (one row per team)', () => {
+  const csv = [
+    'Name,Age Group,Organization,City,State,Team Rep Name,Team Rep Phone Number,Team Rep Email Address,Number of Players,Number of Coaches',
+    'Arcadia Aces Black,12,ARCADIA ACES BASEBALL INC,Phoenix,AZ,Pat Coach,555-0100,PAT@aces.org,12,2',
+    'Bandits,0,NOLA,New Orleans,LA,,,,11,1',
+  ].join('\n');
+
+  it('reads teams, organizations, reps and roster sizes without player rows', () => {
+    const r = parseRegistrations(csv);
+    expect(r.teamsOnly).toBe(true);
+    expect(r.issues).toEqual([]);
+    expect(r.teams.map((t) => [t.name, t.organization, t.city, t.state, t.rosterSize, t.players.length])).toEqual([
+      ['Arcadia Aces Black', 'ARCADIA ACES BASEBALL INC', 'Phoenix', 'AZ', 12, 0],
+      ['Bandits', 'NOLA', 'New Orleans', 'LA', 11, 0],
+    ]);
+    expect(r.teams[0]).toMatchObject({ coachName: 'Pat Coach', coachEmail: 'pat@aces.org', coachPhone: '555-0100' });
+  });
+});

@@ -32,6 +32,10 @@ const FIELD_LABELS: Partial<Record<RegistrationField, string>> = {
   status: 'Status',
   program: 'Program / week',
   programStart: 'Program start date',
+  organization: 'Organization',
+  coachName: 'Team rep',
+  coachEmail: 'Team rep email',
+  rosterSize: 'Players',
 };
 
 const TEMPLATE_HEADERS = ['Program', 'Program Start Date', 'Registration Status', 'First Name', 'Last Name', 'Birth Date', 'Team', 'Role', 'Jersey Number', 'Parent 1 First Name', 'Parent 1 Last Name', 'Parent 1 Email', 'Parent 1 Phone', 'Email'];
@@ -172,7 +176,11 @@ export default function ImportScreen() {
             <Badge label={`${playerCount} players`} tone="navy" icon="person" />
             <Badge label={`${parsed.teams.filter((t) => t.coachName).length} coaches`} tone="navy" icon="clipboard" />
             {parsed.skipped > 0 && <Badge label={`${parsed.skipped} skipped`} tone="warn" />}
+            {parsed.teamsOnly && <Badge label="Team-level export" tone="gold" />}
           </Row>
+          {parsed.teamsOnly && (
+            <Caption>One row per team: teams, organizations, hometowns and team reps are imported now; player rosters can be imported later from a registrations export.</Caption>
+          )}
           <Caption>Detected columns</Caption>
           <Row style={{ flexWrap: 'wrap' }} gap={6}>
             {(Object.keys(FIELD_LABELS) as RegistrationField[])
@@ -253,7 +261,7 @@ export default function ImportScreen() {
             title={
               unassigned > 0
                 ? `Pick a week for ${unassigned} group${unassigned === 1 ? '' : 's'}`
-                : `Import ${parsed.teams.length} teams & ${playerCount} players${assigned.length === 1 && assigned[0].event ? ` into ${assigned[0].event.name}` : ''}`
+                : `Import ${parsed.teams.length} teams${parsed.teamsOnly ? '' : ` & ${playerCount} players`}${assigned.length === 1 && assigned[0].event ? ` into ${assigned[0].event.name}` : ''}`
             }
             icon="cloud-upload"
             loading={busy}

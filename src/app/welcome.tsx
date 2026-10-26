@@ -107,6 +107,15 @@ export default function Welcome() {
         <ErrorNote message={error} />
       </Card>
 
+      <Card onPress={() => router.push('/umpire' as never)} style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+        <Icon name="baseball" color={C.red} size={22} />
+        <View style={{ flex: 1 }}>
+          <Body style={{ fontWeight: '700' }}>Umpire? Enter scores</Body>
+          <Caption>Use the week’s umpire code from the tournament director. No account needed.</Caption>
+        </View>
+        <Icon name="chevron-forward" color={C.muted} size={18} />
+      </Card>
+
       {backend.demoSignIn && (
         <Card style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0' }}>
           <Row>

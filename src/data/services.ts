@@ -1,18 +1,8 @@
 import { generateTeamCode, randomToken } from '../lib/codes';
 import type { ImportedTeam } from '../lib/registrations';
-import {
-  assignPools,
-  bracketAdvance,
-  buildBracket,
-  buildPoolMatchups,
-  placeMatchups,
-  scheduleBrackets,
-  shiftGames,
-  type BracketSchedulingOptions,
-  type ScheduleOptions,
-  type SlotGrid,
-} from '../lib/schedule';
-import { formatDateTime, formatTime } from '../lib/time';
+import { bracketAdvance, overallSeeds, shiftGames } from '../lib/schedule';
+import { planWeek, type WeekPlan, type WeekSettings } from '../lib/week-schedule';
+import { formatDateTime, formatTime, zonedToIso } from '../lib/time';
 import type { Backend } from './backend';
 import type { AppNotification, EventWeek, Game, NotificationKind, Team } from './types';
 
@@ -75,6 +65,8 @@ export async function importRegistrations(
       summary.teamsUpdated++;
       const patch: Partial<Team> = {};
       if (!team.coachName && it.coachName) Object.assign(patch, { coachName: it.coachName, coachEmail: it.coachEmail, coachPhone: it.coachPhone });
+      if (!team.organization && it.organization) patch.organization = it.organization;
+      if (it.rosterSize !== null && team.rosterSize !== it.rosterSize) patch.rosterSize = it.rosterSize;
       if (Object.keys(patch).length) await backend.update('teams', team.id, patch);
     } else {
       [team] = await backend.insert('teams', [
@@ -83,6 +75,8 @@ export async function importRegistrations(
           name: it.name,
           city: it.city,
           state: it.state,
+          organization: it.organization,
+          rosterSize: it.rosterSize,
           code: generateTeamCode(it.name, taken),
           pool: null,
           coachName: it.coachName,
@@ -129,130 +123,131 @@ export async function importRegistrations(
   return summary;
 }
 
-export async function setPools(backend: Backend, teams: Team[], poolCount: number) {
-  const pools = assignPools(teams, poolCount);
-  for (const t of teams) {
-    const pool = pools.get(t.id)!;
-    if (t.pool !== pool) await backend.update('teams', t.id, { pool });
-  }
+export type WeekBuildSettings = WeekSettings;
+
+/**
+ * Runs the schedule engine for an event's teams. Pure: nothing is saved.
+ * The engine's seeded shuffle depends on team order, so teams are put in the
+ * registration export's order (A–Z, ignoring case) first: the same teams
+ * always give the same schedule, however they were loaded.
+ */
+export function planEventWeek(teams: Team[], settings: WeekBuildSettings): WeekPlan {
+  const key = (t: Team) => t.name.toLowerCase();
+  const ordered = [...teams].sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
+  return planWeek(
+    ordered.map((t) => ({ id: t.id, name: t.name, club: t.organization ?? '', state: t.state })),
+    settings,
+  );
 }
 
-async function nextGameNumber(backend: Backend, eventId: string) {
-  const games = await backend.select('games', { eq: { eventId } });
-  return games.reduce((m, g) => Math.max(m, g.number), 0) + 1;
-}
+export type PlannedGameRow = Omit<Game, 'id'> & { key: string; winnerToKey: string | null };
 
-/** Generates and saves pool play. Returns how many matchups could not be placed. */
-export async function generatePoolPlay(
-  backend: Backend,
-  event: EventWeek,
-  teams: Team[],
-  gamesPerTeam: number,
-  grid: SlotGrid,
-  opts: ScheduleOptions,
-  { replaceExisting }: { replaceExisting: boolean },
-): Promise<{ created: number; unscheduled: number }> {
-  if (replaceExisting) {
-    const old = await backend.select('games', { eq: { eventId: event.id, stage: 'pool' } });
-    await backend.remove('games', old.map((g) => g.id));
+/** Turns an engine plan into game rows (numbered in play order), with winner links as engine keys. Pure. */
+export function planToGameRows(plan: WeekPlan, eventId: string, timeZone: string): PlannedGameRow[] {
+  const ordered = [...plan.games].sort((a, b) => a.slot.index - b.slot.index || a.field.localeCompare(b.field, undefined, { numeric: true }));
+  const numberOf = new Map(ordered.map((g, i) => [g.key, i + 1]));
+  const winnerTo = new Map<string, { key: string; slot: 'home' | 'away' }>();
+  for (const g of ordered) {
+    if (g.homeFrom.startsWith('winner:')) winnerTo.set(g.homeFrom.slice(7), { key: g.key, slot: 'home' });
+    if (g.awayFrom.startsWith('winner:')) winnerTo.set(g.awayFrom.slice(7), { key: g.key, slot: 'away' });
   }
-  const res = placeMatchups(buildPoolMatchups(teams, gamesPerTeam), { ...grid, timeZone: event.timezone }, opts);
-  let n = await nextGameNumber(backend, event.id);
-  const rows: Partial<Game>[] = res.scheduled
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.field.localeCompare(b.field))
-    .map((m) => ({
-      eventId: event.id,
-      field: m.field,
-      startsAt: m.startsAt,
-      homeTeamId: m.homeTeamId,
-      awayTeamId: m.awayTeamId,
-      homeLabel: null,
-      awayLabel: null,
+  const side = (from: string) => {
+    if (from.startsWith('seed:')) {
+      const n = Number(from.slice(5));
+      return { seed: n, label: `Seed #${n}` };
+    }
+    if (from.startsWith('winner:')) return { seed: null, label: `Winner G${numberOf.get(from.slice(7))}` };
+    return { seed: null, label: null };
+  };
+  return ordered.map((g) => {
+    const home = side(g.homeFrom);
+    const away = side(g.awayFrom);
+    const link = winnerTo.get(g.key);
+    return {
+      key: g.key,
+      winnerToKey: link?.key ?? null,
+      eventId,
+      field: g.field,
+      startsAt: zonedToIso(g.slot.date, g.slot.time, timeZone),
+      homeTeamId: g.home,
+      awayTeamId: g.away,
+      homeLabel: home.label,
+      awayLabel: away.label,
+      homeSeed: home.seed,
+      awaySeed: away.seed,
       homeScore: null,
       awayScore: null,
       status: 'scheduled',
-      stage: 'pool',
-      bracket: null,
-      round: `Pool ${m.pool}`,
-      number: n++,
+      stage: g.stage,
+      bracket: g.bracket ?? null,
+      round: g.stage === 'pool' ? 'Pool play' : g.bracket ? g.label.slice(g.bracket.length).trim() : g.label,
+      number: numberOf.get(g.key)!,
       winnerToGameId: null,
-      winnerToSlot: null,
+      winnerToSlot: link?.slot ?? null,
       note: null,
-    }));
-  await backend.insert('games', rows);
-  return { created: rows.length, unscheduled: res.unscheduled.length };
-}
-
-export interface BracketPlan {
-  name: string;
-  teamIds: string[];
+      baseballsUsed: null,
+    };
+  });
 }
 
 /**
- * Builds and schedules every bracket at once (Cooperstown: Championship,
- * Monster, Cooper), replacing any existing bracket games, then notifies each
- * bracket's teams. Nothing is saved unless every game fits.
+ * Saves a whole week's schedule from the engine, replacing the event's games:
+ * pool games with their teams, bracket games with "Seed #N" / "Winner G#"
+ * placeholders that fill in as pool play ends and winners advance.
  */
-export async function generateBrackets(
-  backend: Backend,
-  event: EventWeek,
-  plans: BracketPlan[],
-  sched: Omit<BracketSchedulingOptions, 'existing' | 'timeZone'>,
-): Promise<{ created: number; usedLate: boolean; lastStart: string | null }> {
-  const all = await backend.select('games', { eq: { eventId: event.id } });
-  const brackets = plans.filter((p) => p.teamIds.length >= 2).map((p) => ({ name: p.name, drafts: buildBracket(p.teamIds) }));
-  const res = scheduleBrackets(brackets, { ...sched, timeZone: event.timezone, existing: all.filter((g) => g.stage === 'pool') });
-  if (res.unscheduled.length) {
-    throw new Error(`${res.unscheduled.length} bracket games don't fit in the selected days. Add a bracket day or allow late games.`);
-  }
-  await backend.remove('games', all.filter((g) => g.stage === 'bracket').map((g) => g.id));
+export async function postWeekSchedule(backend: Backend, event: EventWeek, plan: WeekPlan): Promise<{ pool: number; bracket: number }> {
+  if (plan.problems.length) throw new Error(plan.problems[0]);
+  const old = await backend.select('games', { eq: { eventId: event.id } });
+  await backend.remove('games', old.map((g) => g.id));
 
-  // Number games in the order they're played so "Winner G41" reads naturally.
-  let n = all.filter((g) => g.stage === 'pool').reduce((m, g) => Math.max(m, g.number), 0) + 1;
-  const ordered = [...res.placed].sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.field.localeCompare(b.field, undefined, { numeric: true }));
-  const numberOf = new Map(ordered.map((p) => [`${p.bracket}|${p.draft.key}`, n++]));
-  const relabel = (bracket: string, l: string | null) => (l?.startsWith('Winner ') ? `Winner G${numberOf.get(`${bracket}|${l.slice(7)}`)}` : l);
-
+  const rows = planToGameRows(plan, event.id, event.timezone);
+  // Insert with the engine key in `note`, then turn keys into winner links once the games have ids.
   const created = await backend.insert(
     'games',
-    ordered.map((p) => ({
-      eventId: event.id,
-      field: p.field,
-      startsAt: p.startsAt,
-      homeTeamId: p.draft.homeTeamId,
-      awayTeamId: p.draft.awayTeamId,
-      homeLabel: relabel(p.bracket, p.draft.homeLabel),
-      awayLabel: relabel(p.bracket, p.draft.awayLabel),
-      homeScore: null,
-      awayScore: null,
-      status: 'scheduled' as const,
-      stage: 'bracket' as const,
-      bracket: p.bracket,
-      round: p.draft.roundName,
-      number: numberOf.get(`${p.bracket}|${p.draft.key}`)!,
-      winnerToGameId: null,
-      winnerToSlot: null,
-      note: `${p.bracket}|${p.draft.key}`, // temporary, replaced with links below
-    })),
+    rows.map(({ key, winnerToKey: _w, ...row }) => ({ ...row, winnerToSlot: null, note: key })),
   );
-  const idByKey = new Map(created.map((g) => [g.note!, g.id]));
-  for (const p of ordered) {
-    const key = `${p.bracket}|${p.draft.key}`;
-    await backend.update('games', idByKey.get(key)!, {
+  const idByKey = new Map(created.map((c) => [c.note!, c.id]));
+  for (const r of rows) {
+    await backend.update('games', idByKey.get(r.key)!, {
       note: null,
-      winnerToGameId: p.draft.winnerTo ? idByKey.get(`${p.bracket}|${p.draft.winnerTo.key}`)! : null,
-      winnerToSlot: p.draft.winnerTo?.slot ?? null,
+      winnerToGameId: r.winnerToKey ? idByKey.get(r.winnerToKey)! : null,
+      winnerToSlot: r.winnerToSlot,
     });
   }
-  for (const plan of plans.filter((p) => p.teamIds.length)) {
+  return { pool: created.filter((c) => c.stage === 'pool').length, bracket: created.filter((c) => c.stage === 'bracket').length };
+}
+
+/**
+ * After pool play: ranks every team (Cooperstown standings order), puts each
+ * seed into its bracket games, and tells every team which bracket they're in.
+ */
+export async function seedBrackets(backend: Backend, event: EventWeek, teams: Team[], games: Game[]): Promise<{ seeded: number }> {
+  const seeds = overallSeeds(teams, games);
+  const bracketGames = games.filter((g) => g.stage === 'bracket');
+  const membership = new Map<string, Set<string>>();
+  let seeded = 0;
+  for (const g of bracketGames) {
+    const patch: Partial<Game> = {};
+    if (g.homeSeed) patch.homeTeamId = seeds[g.homeSeed - 1] ?? null;
+    if (g.awaySeed) patch.awayTeamId = seeds[g.awaySeed - 1] ?? null;
+    if (Object.keys(patch).length === 0) continue;
+    await backend.update('games', g.id, patch);
+    for (const id of [patch.homeTeamId, patch.awayTeamId]) {
+      if (!id || !g.bracket) continue;
+      if (!membership.has(g.bracket)) membership.set(g.bracket, new Set());
+      membership.get(g.bracket)!.add(id);
+      seeded++;
+    }
+  }
+  for (const [bracket, ids] of membership) {
     await notify(backend, event.id, {
       kind: 'schedule',
-      title: `Bracket play: you're in the ${plan.name} bracket`,
-      body: `Seeds are set from pool play. Check the schedule for your first ${plan.name} bracket game.`,
-      teamIds: plan.teamIds,
+      title: `Bracket play: you're in the ${bracket} bracket`,
+      body: `Seeds are set from pool play. Check the schedule for your first ${bracket} bracket game.`,
+      teamIds: [...ids],
     });
   }
-  return { created: created.length, usedLate: res.usedLate, lastStart: ordered.at(-1)?.startsAt ?? null };
+  return { seeded };
 }
 
 function teamName(teams: Team[], id: string | null, fallback: string | null) {
@@ -267,9 +262,10 @@ export async function saveScore(
   homeScore: number | null,
   awayScore: number | null,
   status: Game['status'],
+  baseballsUsed: number | null = game.baseballsUsed,
 ) {
-  await backend.update('games', game.id, { homeScore, awayScore, status });
-  const updated = { ...game, homeScore, awayScore, status };
+  await backend.update('games', game.id, { homeScore, awayScore, status, baseballsUsed });
+  const updated = { ...game, homeScore, awayScore, status, baseballsUsed };
   if (status === 'final' && game.status !== 'final' && homeScore !== null && awayScore !== null) {
     const home = teamName(teams, game.homeTeamId, game.homeLabel);
     const away = teamName(teams, game.awayTeamId, game.awayLabel);

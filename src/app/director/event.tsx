@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
@@ -5,6 +6,7 @@ import { Badge, Body, Button, Caption, Card, ErrorNote, Field, H1, H2, Row, Scre
 import { C, R, S } from '@/constants/theme';
 import { useBackend, useCurrentEvent, useTable } from '@/data';
 import type { EventWeek } from '@/data/types';
+import { randomToken } from '@/lib/codes';
 import { DEFAULT_TZ, localDateKey } from '@/lib/time';
 import { generateSeasonWeeks, weekRange, weekStatus } from '@/lib/weeks';
 
@@ -59,6 +61,7 @@ export default function Weeks() {
         })}
       </Card>
 
+      {week.data && <UmpireCode key={`ump-${week.data.id}`} event={week.data} />}
       {week.data && <WeekForm key={week.data.id} event={week.data} teamCount={teamCount(week.data.id)} />}
       <SeasonGenerator existing={week.events} onCreated={(firstId) => firstId && !week.data && week.select(firstId)} />
     </Screen>
@@ -193,7 +196,7 @@ function SeasonGenerator({ existing, onCreated }: { existing: EventWeek[]; onCre
           setBusy(true);
           setError(null);
           try {
-            const rows = drafts.filter((d) => !overlaps.includes(d)).map((d) => ({ ...d, ...DEFAULTS, timezone: DEFAULT_TZ }));
+            const rows = drafts.filter((d) => !overlaps.includes(d)).map((d) => ({ ...d, ...DEFAULTS, timezone: DEFAULT_TZ, umpireCode: null }));
             const created = await backend.insert('events', rows);
             onCreated(created[0]?.id ?? null);
             showMessage('Season created', `${created.length} weeks added.`);
@@ -205,6 +208,38 @@ function SeasonGenerator({ existing, onCreated }: { existing: EventWeek[]; onCre
           }
         }}
       />
+    </Card>
+  );
+}
+
+/** The code umpires enter on their scoring screen for this week. */
+function UmpireCode({ event }: { event: EventWeek }) {
+  const backend = useBackend();
+  const [busy, setBusy] = useState(false);
+  const make = async () => {
+    if (event.umpireCode && !(await confirmAction('Change the umpire code?', 'The old code stops working right away. Send the new one to your umpires.', 'Change code'))) return;
+    setBusy(true);
+    try {
+      await backend.update('events', event.id, { umpireCode: randomToken(6) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <H2 style={{ fontSize: 18 }}>Umpire code · {event.name}</H2>
+      <Caption>Umpires open “Umpire? Enter scores” on the sign-in screen and enter this code to score this week’s games and record baseballs used. No account needed.</Caption>
+      {event.umpireCode ? (
+        <Row style={{ flexWrap: 'wrap' }}>
+          <Body selectable style={{ fontSize: 28, fontWeight: '800', letterSpacing: 3, color: C.navy }}>
+            {event.umpireCode}
+          </Body>
+          <Button title="Copy" icon="copy" variant="secondary" small onPress={() => Clipboard.setStringAsync(event.umpireCode!)} />
+          <Button title="New code" variant="ghost" small loading={busy} onPress={make} />
+        </Row>
+      ) : (
+        <Button title="Create umpire code" icon="key" loading={busy} onPress={make} />
+      )}
     </Card>
   );
 }
