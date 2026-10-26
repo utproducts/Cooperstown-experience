@@ -53,6 +53,7 @@ export default function TeamDetail() {
         {team.pool ? ` · Pool ${team.pool}` : ''}
       </Caption>
 
+      {backend.features.followCodes && (
       <Card style={{ backgroundColor: C.navy, borderColor: C.navy }}>
         <Caption style={{ color: C.gold, fontWeight: '800' }}>TEAM FOLLOW CODE</Caption>
         <Text selectable style={{ fontFamily: Fonts.mono, fontSize: 32, fontWeight: '800', color: C.white, letterSpacing: 2 }}>
@@ -67,9 +68,21 @@ export default function TeamDetail() {
           <Button title="Resend all" variant="secondary" small loading={busy} disabled={!invites.length} onPress={() => send(invites.map((i) => i.id))} />
         </Row>
       </Card>
+      )}
+      {!backend.features.rosters && (
+        <Card>
+          <H3>Team</H3>
+          <Body>
+            {team.organization ?? 'No organization listed'}
+            {team.rosterSize ? ` · ${team.rosterSize} players registered` : ''}
+          </Body>
+          <Caption>Player rosters and parent links come with the family features (phase 2).</Caption>
+        </Card>
+      )}
 
       <CoachForm key={team.id} team={team} />
 
+      {backend.features.rosters && (
       <Section title={`Roster (${roster.length})`}>
         <Card style={{ gap: 0 }}>
           {roster.map((p, i) => (
@@ -92,6 +105,9 @@ export default function TeamDetail() {
         </Card>
       </Section>
 
+      )}
+
+      {backend.features.invites && (
       <Section title={`Invitations (${invites.length})`}>
         <Card style={{ gap: 4 }}>
           {invites.map((i) => (
@@ -104,6 +120,8 @@ export default function TeamDetail() {
           ))}
         </Card>
       </Section>
+
+      )}
 
       <Section title="Games">
         {games.map((g) => (

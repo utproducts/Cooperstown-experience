@@ -94,6 +94,7 @@ export function GameEditor({
           {scoreRow(homeName, home, setHome)}
           {scoreRow('Baseballs used', balls, setBalls)}
           <Row style={{ flexWrap: 'wrap' }}>
+            {backend.features.liveStatus && (
             <Button
               title="Save as live"
               variant="secondary"
@@ -101,6 +102,7 @@ export function GameEditor({
               onPress={() => run(() => saveScore(backend, game, teams, parsed(home) ?? 0, parsed(away) ?? 0, 'live', parsed(balls)))}
               style={{ flexGrow: 1 }}
             />
+            )}
             <Button
               title="Final"
               icon="flag"
@@ -110,7 +112,10 @@ export function GameEditor({
               style={{ flexGrow: 1 }}
             />
           </Row>
-          <Caption>Marking final notifies both teams{game.stage === 'bracket' ? ' and advances the winner' : ''}.</Caption>
+          <Caption>
+            {backend.features.alerts ? 'Marking final notifies both teams' : 'Marking final posts the score'}
+            {game.stage === 'bracket' ? ' and advances the winner' : ''}.
+          </Caption>
           {(game.homeScore !== null || game.status === 'final') && (
             <Button
               title="Remove score"
@@ -122,7 +127,9 @@ export function GameEditor({
             />
           )}
           <Row>
-            <Button title="Postpone" variant="ghost" small onPress={() => run(() => backend.update('games', game.id, { status: 'postponed' }))} />
+            {backend.features.liveStatus && (
+              <Button title="Postpone" variant="ghost" small onPress={() => run(() => backend.update('games', game.id, { status: 'postponed' }))} />
+            )}
             <Button title="Cancel game" variant="ghost" small onPress={() => run(() => backend.update('games', game.id, { status: 'cancelled' }))} />
           </Row>
         </>
@@ -130,7 +137,10 @@ export function GameEditor({
 
       {mode === 'delay' && (
         <>
-          <Body>Push this game back. Both teams{cascade ? ' and every later game on this field today' : ''} get a push notification.</Body>
+          <Body>
+            Push this game back{cascade ? ', along with every later game on this field today' : ''}.{' '}
+            {backend.features.alerts ? 'Both teams get a push notification.' : 'Families see the new time on the schedule.'}
+          </Body>
           <Row style={{ flexWrap: 'wrap' }}>
             {[15, 30, 45, 60, 90, 120].map((m) => (
               <Button key={m} title={`${m} min`} small variant={minutes === m ? 'dark' : 'secondary'} onPress={() => setMinutes(m)} />

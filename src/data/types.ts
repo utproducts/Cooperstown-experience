@@ -14,8 +14,21 @@ export interface EventWeek {
   /** Arrival / check-in window shown to families, e.g. "Fri 12:00 PM – 6:00 PM". */
   checkInWindow: string;
   timezone: string;
-  /** Code umpires enter to score this week's games (no account needed). Directors only. */
-  umpireCode: string | null;
+  /** Families see a week only once it's published. */
+  published: boolean;
+  /** Schedule builder settings saved with the week (Cooperstown's week settings), or null for defaults. */
+  settings: Record<string, unknown> | null;
+}
+
+/** One umpire's (or crew's) scoring code for a week. Directors only. */
+export interface UmpireCode {
+  id: string;
+  eventId: string;
+  code: string;
+  /** Who it's for, e.g. "Mike R." or "Field 3 crew"; shown as who scored a game. */
+  label: string;
+  active: boolean;
+  lastUsedAt: string | null;
 }
 
 export interface Team {
@@ -168,4 +181,15 @@ export interface Profile {
   email: string;
   name: string;
   role: Role;
+}
+
+/** A team's arrival check-in (Cooperstown's staff checklist: roster verified, waivers, wristbands, keys…). */
+export interface TeamCheckin {
+  /** Same as teamId: one check-in per team. */
+  id: string;
+  teamId: string;
+  items: Record<string, boolean>;
+  notes: string;
+  checkedInAt: string | null;
+  checkedInBy: string;
 }

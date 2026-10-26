@@ -7,7 +7,7 @@ import { pickDefaultEvent } from '../lib/weeks';
 
 import type { Backend, Query, TableName, Tables } from './backend';
 import { createDemoBackend } from './demo';
-import { createSupabaseBackend } from './supabase';
+import { createCooperstownBackend } from './cooperstown';
 import type { EventWeek, Profile } from './types';
 
 export const APP_URL =
@@ -17,7 +17,8 @@ export const APP_URL =
 function makeBackend(): Backend {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-  return url && key ? createSupabaseBackend(url, key) : createDemoBackend(APP_URL);
+  // The Cooperstown All Star Village database when configured; sample data on the device otherwise.
+  return url && key ? createCooperstownBackend(url, key) : createDemoBackend(APP_URL);
 }
 
 interface Ctx {

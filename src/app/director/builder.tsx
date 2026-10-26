@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Badge, Body, Button, Caption, Card, Divider, ErrorNote, Field, H1, H2, H3, Row, Screen, Stack, confirmAction, showMessage } from '@/components/ui';
 import { C, R, S } from '@/constants/theme';
-import { useBackend } from '@/data';
+import { useBackend, useLiveQuery } from '@/data';
 import { useDirectorData } from '@/data/director';
 import { planEventWeek, postWeekSchedule, seedBrackets, type WeekBuildSettings } from '@/data/services';
 import { fieldNames } from '@/lib/schedule';
@@ -33,20 +33,38 @@ function defaultDays(count: number): DayRow[] {
   return Array.from({ length: count }, (_, i) => ({ start: '08:00', end: '22:00', pool: i <= count - 3, bracket: i >= count - 3 }));
 }
 
+interface SavedSettings {
+  days?: DayRow[];
+  slotMinutes?: number;
+  poolGames?: number;
+  maxPerDay?: number;
+  bracketMaxPerDay?: number;
+  restSlots?: number;
+  brackets?: string[];
+}
+
 export default function Builder() {
+  const d = useDirectorData();
+  // Start from the week's saved settings; switching weeks starts fresh.
+  return <BuilderForWeek key={d.event?.id ?? 'none'} />;
+}
+
+function BuilderForWeek() {
   const backend = useBackend();
   const d = useDirectorData();
   const event = d.event;
   const dates = event ? dateRange(event.startsOn, event.endsOn) : [];
+  const saved = (event?.settings ?? {}) as SavedSettings;
+  const weekFields = useLiveQuery(`fields:${event?.id}`, ['events'], async (b) => (event && b.weekFields ? b.weekFields(event.id) : null), null as string[] | null);
 
   const [fieldCount, setFieldCount] = useState('12');
-  const [slotMinutes, setSlotMinutes] = useState('120');
-  const [poolGames, setPoolGames] = useState('6');
-  const [maxPerDay, setMaxPerDay] = useState('3');
-  const [bracketMaxPerDay, setBracketMaxPerDay] = useState('4');
-  const [restSlots, setRestSlots] = useState('1');
-  const [bracketNames, setBracketNames] = useState('Championship, Monster, Cooper');
-  const [daysState, setDays] = useState<DayRow[] | null>(null);
+  const [slotMinutes, setSlotMinutes] = useState(String(saved.slotMinutes ?? 120));
+  const [poolGames, setPoolGames] = useState(String(saved.poolGames ?? 6));
+  const [maxPerDay, setMaxPerDay] = useState(String(saved.maxPerDay ?? 3));
+  const [bracketMaxPerDay, setBracketMaxPerDay] = useState(String(saved.bracketMaxPerDay ?? 4));
+  const [restSlots, setRestSlots] = useState(String(saved.restSlots ?? 1));
+  const [bracketNames, setBracketNames] = useState((saved.brackets ?? ['Championship', 'Monster', 'Cooper']).join(', '));
+  const [daysState, setDays] = useState<DayRow[] | null>(saved.days?.length ? saved.days.map((x) => ({ start: x.start, end: x.end, pool: !!x.pool, bracket: !!x.bracket })) : null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +76,8 @@ export default function Builder() {
     return Number.isInteger(n) && n >= lo && n <= hi ? n : fallback;
   };
   const settings: WeekBuildSettings = {
-    fields: fieldNames(num(fieldCount, 1, 40, 12)),
+    // A week's own fields when the database keeps them (Cooperstown), otherwise "Field 1"…"Field n".
+    fields: weekFields.data?.length ? weekFields.data : fieldNames(num(fieldCount, 1, 40, 12)),
     days: dates.map((date, i) => ({ date, ...days[i] })),
     slotMinutes: num(slotMinutes, 30, 300, 120),
     poolGames: num(poolGames, 1, 12, 6),
@@ -135,14 +154,17 @@ export default function Builder() {
                   ? 'Brackets are seeded. Winners move on automatically as scores come in.'
                   : `Bracket games show “Seed #N” until you seed them from the pool play standings.`}
               </Body>
+              {posted.pool.length - finalPool > 0 && (
+                <Caption>Seeding opens when every pool game has a final score ({posted.pool.length - finalPool} to go).</Caption>
+              )}
               <Button
                 title={seedsFilled ? 'Re-seed brackets from standings' : 'Seed brackets from pool play'}
+                disabled={posted.pool.length - finalPool > 0 || posted.bracket.some((g) => g.status === 'final')}
                 icon="git-network"
                 variant="dark"
                 loading={busy === 'seed'}
                 onPress={async () => {
-                  const open = posted.pool.length - finalPool;
-                  const msg = `${open ? `${open} pool games aren't final yet, so seeds could still change. ` : ''}Every team will be told which bracket they're in.`;
+                  const msg = backend.features.alerts ? 'Every team will be told which bracket they’re in.' : 'Each team’s bracket games will show on the schedule.';
                   if (!(await confirmAction('Seed the brackets?', msg, 'Seed brackets'))) return;
                   run('seed', async () => {
                     const r = await seedBrackets(backend, event, d.teams, d.games);
@@ -159,7 +181,11 @@ export default function Builder() {
         <H2 style={{ fontSize: 18 }}>Format</H2>
         <Row>
           <View style={{ flex: 1 }}>
-            <Field label="Fields" value={fieldCount} onChangeText={setFieldCount} keyboardType="number-pad" />
+            {weekFields.data?.length ? (
+              <Field label="Fields (this week’s)" value={`${weekFields.data.length}: ${weekFields.data[0]} – ${weekFields.data.at(-1)}`} editable={false} />
+            ) : (
+              <Field label="Fields" value={fieldCount} onChangeText={setFieldCount} keyboardType="number-pad" />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Field label="Game slot (min)" value={slotMinutes} onChangeText={setSlotMinutes} keyboardType="number-pad" />
@@ -266,11 +292,14 @@ export default function Builder() {
               </Row>
             ))}
             <Divider />
+            {d.games.some((g) => g.status === 'final') && (
+              <Caption>This week has scores, so the schedule can’t be rebuilt. Move or change games one at a time on the Games tab.</Caption>
+            )}
             <Button
               title={posted.pool.length || posted.bracket.length ? 'Replace the posted schedule' : 'Post the week schedule'}
               icon="flash"
               loading={busy === 'post'}
-              disabled={plan.problems.length > 0}
+              disabled={plan.problems.some((p) => !p.startsWith('An odd number')) || d.games.some((g) => g.status === 'final')}
               onPress={async () => {
                 if (d.games.length) {
                   const msg = `This deletes the ${d.games.length} posted games${scored ? `, including ${scored} with scores` : ''}, and posts ${plan.games.length} new ones.`;
@@ -278,6 +307,11 @@ export default function Builder() {
                 }
                 run('post', async () => {
                   const r = await postWeekSchedule(backend, event, plan);
+                  // Keep the settings with the week (the check-in list and anything else stay as they were).
+                  const { fields: _f, days: dayRows, ...rest } = settings;
+                  await backend.update('events', event.id, {
+                    settings: { ...(event.settings ?? {}), ...rest, days: dayRows.map(({ date: _d, ...x }) => x) },
+                  });
                   showMessage('Schedule posted', `${r.pool} pool games and ${r.bracket} bracket games. Families and coaches can see them now.`);
                 });
               }}

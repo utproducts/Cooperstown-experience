@@ -19,6 +19,6 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase/functions"
+    "supabase/phase2-proposal/functions"
   ]
 }

@@ -10,20 +10,21 @@ import { FamilyWeekLabel } from '@/components/week-picker';
 import { ITINERARY } from '@/content/guide';
 import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
+import type { Features } from '@/data/backend';
 import { useFanData } from '@/data/fan';
 import { dateRange, formatDay, localDateKey } from '@/lib/time';
 
-const QUICK: { icon: IconName; label: string; href: string }[] = [
-  { icon: 'qr-code', label: 'Check-in QR', href: '/fan/player' },
+const QUICK: { icon: IconName; label: string; href: string; needs?: keyof Features }[] = [
+  { icon: 'qr-code', label: 'Check-in QR', href: '/fan/player', needs: 'rosters' },
   { icon: 'calendar', label: 'Schedule', href: '/fan/schedule' },
-  { icon: 'people', label: 'Meetings', href: '/fan/meetings' },
-  { icon: 'camera', label: 'Photos', href: '/fan/photos' },
+  { icon: 'people', label: 'Meetings', href: '/fan/meetings', needs: 'meetings' },
+  { icon: 'camera', label: 'Photos', href: '/fan/photos', needs: 'photos' },
   { icon: 'map', label: 'Week guide', href: '/fan/guide' },
   { icon: 'add-circle', label: 'Follow team', href: '/fan/teams' },
 ];
 
 export default function FanHome() {
-  const { profile } = useAuth();
+  const { profile, backend } = useAuth();
   const d = useFanData();
   const event = d.event;
   const tz = event?.timezone;
@@ -65,8 +66,12 @@ export default function FanHome() {
       {d.myTeamIds.length === 0 && (
         <Card style={{ borderColor: C.red }}>
           <H3>Follow your team</H3>
-          <Body>Enter the team code from your invitation email to get your team’s schedule, scores and alerts.</Body>
-          <Button title="Enter team code" icon="key" onPress={() => router.push('/fan/teams')} />
+          <Body>
+            {backend.features.followCodes
+              ? 'Enter the team code from your invitation email to get your team’s schedule, scores and alerts.'
+              : 'Pick your team to see its games, scores and bracket.'}
+          </Body>
+          <Button title={backend.features.followCodes ? 'Enter team code' : 'Find my team'} icon={backend.features.followCodes ? 'key' : 'search'} onPress={() => router.push('/fan/teams')} />
         </Card>
       )}
 
@@ -77,7 +82,7 @@ export default function FanHome() {
       )}
 
       <View style={styles.quickGrid}>
-        {QUICK.map((q) => (
+        {QUICK.filter((q) => !q.needs || backend.features[q.needs]).map((q) => (
           <Pressable key={q.label} style={({ pressed }) => [styles.quick, pressed && { opacity: 0.7 }]} onPress={() => router.push(q.href as never)}>
             <Icon name={q.icon} size={24} color={C.red} />
             <Text style={styles.quickText}>{q.label}</Text>

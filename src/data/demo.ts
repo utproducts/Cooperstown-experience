@@ -7,7 +7,7 @@ import { weekRange } from '../lib/weeks';
 import { saveScore } from './services';
 import type { Profile, Role } from './types';
 
-const STORAGE_KEY = 'cxp-demo-v3';
+const STORAGE_KEY = 'cxp-demo-v4';
 
 /**
  * In-memory backend with sample data, persisted to device storage. Used when
@@ -84,6 +84,7 @@ export function createDemoBackend(appUrl: string): Backend {
 
   const backend: Backend = {
     mode: 'demo',
+    features: { familyAccounts: true, followCodes: true, rosters: true, alerts: true, meetings: true, photos: true, invites: true, liveStatus: true },
 
     currentProfile: () => profile,
     onAuthChange(cb) {
@@ -160,6 +161,12 @@ export function createDemoBackend(appUrl: string): Backend {
     async update(table, id, patch) {
       const rows = db[table] as { id: string }[];
       const i = rows.findIndex((r) => r.id === id);
+      if (i === -1 && table === 'team_checkins') {
+        // One check-in per team, created on first save.
+        rows.push({ id, ...clone(patch) });
+        emit(table);
+        return;
+      }
       if (i === -1) throw new Error('Not found');
       rows[i] = { ...rows[i], ...clone(patch) };
       emit(table);
@@ -241,18 +248,24 @@ export function createDemoBackend(appUrl: string): Backend {
 
     async umpireGames(code) {
       await readyPromise;
-      const ev = db.events.find((e) => e.umpireCode && e.umpireCode === code.trim().toUpperCase());
-      if (!ev) throw new Error('That umpire code isn’t valid. Check with the tournament director.');
+      const uc = db.umpire_codes.find((c) => c.active && c.code === code.trim().toUpperCase());
+      const ev = uc && db.events.find((e) => e.id === uc.eventId);
+      if (!uc || !ev) throw new Error('That code isn’t right, or it was turned off. Check with the tournament desk.');
+      uc.lastUsedAt = new Date().toISOString();
+      emit('umpire_codes');
       return {
         event: { id: ev.id, name: ev.name, startsOn: ev.startsOn, endsOn: ev.endsOn, timezone: ev.timezone },
+        label: uc.label,
         games: clone(db.games.filter((g) => g.eventId === ev.id).sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.field.localeCompare(b.field, undefined, { numeric: true }))),
         teams: db.teams.filter((t) => t.eventId === ev.id).map((t) => ({ id: t.id, name: t.name })),
       };
     },
 
     async umpireScore(code, gameId, homeScore, awayScore, baseballs) {
-      const ev = db.events.find((e) => e.umpireCode && e.umpireCode === code.trim().toUpperCase());
-      if (!ev) throw new Error('That umpire code isn’t valid.');
+      const uc = db.umpire_codes.find((c) => c.active && c.code === code.trim().toUpperCase());
+      const ev = uc && db.events.find((e) => e.id === uc.eventId);
+      if (!uc || !ev) throw new Error('That code isn’t right, or it was turned off.');
+      uc.lastUsedAt = new Date().toISOString();
       const game = db.games.find((g) => g.id === gameId && g.eventId === ev.id);
       if (!game) throw new Error('That game isn’t in this week.');
       if (!game.homeTeamId || !game.awayTeamId) throw new Error('The teams for this game aren’t known yet.');

@@ -77,7 +77,8 @@ export function buildSeed(now = new Date()): SeedTables {
     longitude: -74.9605,
     checkInWindow: '12:00 PM – 6:00 PM on arrival day',
     timezone: DEFAULT_TZ,
-    umpireCode: 'UMPDEMO',
+    published: true,
+    settings: null,
   };
 
   const teams: Team[] = TEAMS.map(([name, city, state], i) => ({
@@ -155,7 +156,7 @@ export function buildSeed(now = new Date()): SeedTables {
     ...event,
     ...w,
     id: `evt-2027-w${i + 1}`,
-    umpireCode: i === 0 ? 'UMP2027' : null,
+    published: i === 0,
   }));
   const week1Teams: Team[] = WEEK1_2027_TEAMS.map((t, i) => ({
     id: `w1-team-${i + 1}`,
@@ -239,6 +240,12 @@ export function buildSeed(now = new Date()): SeedTables {
       bookedCount: 0,
     })),
     meeting_bookings: [],
+    team_checkins: [],
+    umpire_codes: [
+      { id: 'ump-1', eventId: 'evt-2027-w1', code: 'UMP2027', label: 'Mike R. (Fields 1–6)', active: true, lastUsedAt: null },
+      { id: 'ump-2', eventId: 'evt-2027-w1', code: 'UMPCREW', label: 'Field 7–12 crew', active: true, lastUsedAt: null },
+      { id: 'ump-3', eventId, code: 'UMPDEMO', label: 'Demo umpire', active: true, lastUsedAt: null },
+    ],
     photo_products: [
       ['Team Photo 8×10', 'Official team portrait, printed and mailed home.', 2500, 'print'],
       ['Player Memory Mate', 'Individual portrait with team photo inset, 8×10.', 3000, 'print'],

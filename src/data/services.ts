@@ -196,8 +196,13 @@ export function planToGameRows(plan: WeekPlan, eventId: string, timeZone: string
  * placeholders that fill in as pool play ends and winners advance.
  */
 export async function postWeekSchedule(backend: Backend, event: EventWeek, plan: WeekPlan): Promise<{ pool: number; bracket: number }> {
-  if (plan.problems.length) throw new Error(plan.problems[0]);
+  const blocking = plan.problems.filter((p) => !p.startsWith('An odd number'));
+  if (blocking.length) throw new Error(blocking[0]);
   const old = await backend.select('games', { eq: { eventId: event.id } });
+  // Same rule as the Cooperstown admin site: once a game has a score, the week isn't rebuilt.
+  if (old.some((g) => g.status === 'final')) {
+    throw new Error('This week has scores, so its schedule can’t be built again. Change games one at a time on the Games tab.');
+  }
   await backend.remove('games', old.map((g) => g.id));
 
   const rows = planToGameRows(plan, event.id, event.timezone);
@@ -222,6 +227,9 @@ export async function postWeekSchedule(backend: Backend, event: EventWeek, plan:
  * seed into its bracket games, and tells every team which bracket they're in.
  */
 export async function seedBrackets(backend: Backend, event: EventWeek, teams: Team[], games: Game[]): Promise<{ seeded: number }> {
+  const open = games.filter((g) => g.stage === 'pool' && g.status !== 'final' && g.status !== 'cancelled').length;
+  if (open) throw new Error(`${open} pool game${open === 1 ? ' still needs a' : 's still need'} score. Seed the brackets when pool play is over.`);
+  if (games.some((g) => g.stage === 'bracket' && g.status === 'final')) throw new Error('The brackets have started, so the seeds can’t change.');
   const seeds = overallSeeds(teams, games);
   const bracketGames = games.filter((g) => g.stage === 'bracket');
   const membership = new Map<string, Set<string>>();

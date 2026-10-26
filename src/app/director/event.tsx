@@ -7,7 +7,7 @@ import { C, R, S } from '@/constants/theme';
 import { useBackend, useCurrentEvent, useTable } from '@/data';
 import type { EventWeek } from '@/data/types';
 import { randomToken } from '@/lib/codes';
-import { DEFAULT_TZ, localDateKey } from '@/lib/time';
+import { DEFAULT_TZ, localDateKey, relativeTime } from '@/lib/time';
 import { generateSeasonWeeks, weekRange, weekStatus } from '@/lib/weeks';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -61,7 +61,7 @@ export default function Weeks() {
         })}
       </Card>
 
-      {week.data && <UmpireCode key={`ump-${week.data.id}`} event={week.data} />}
+      {week.data && <UmpireCodes key={`ump-${week.data.id}`} event={week.data} />}
       {week.data && <WeekForm key={week.data.id} event={week.data} teamCount={teamCount(week.data.id)} />}
       <SeasonGenerator existing={week.events} onCreated={(firstId) => firstId && !week.data && week.select(firstId)} />
     </Screen>
@@ -87,7 +87,22 @@ function WeekForm({ event, teamCount }: { event: EventWeek; teamCount: number })
 
   return (
     <Card>
-      <H2 style={{ fontSize: 18 }}>Edit {event.name}</H2>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <H2 style={{ fontSize: 18, flex: 1 }}>Edit {event.name}</H2>
+        <Badge label={event.published ? 'Public' : 'Hidden from families'} tone={event.published ? 'green' : 'warn'} />
+      </Row>
+      <Button
+        title={event.published ? 'Hide from families' : 'Make public for families'}
+        icon={event.published ? 'eye-off' : 'eye'}
+        variant={event.published ? 'secondary' : 'dark'}
+        small
+        onPress={async () => {
+          const msg = event.published ? 'Families won’t see this week’s schedule until it’s public again.' : 'Families and coaches will see the teams, schedule and scores.';
+          if (await confirmAction(event.published ? 'Hide this week?' : 'Make this week public?', msg, event.published ? 'Hide' : 'Make public')) {
+            await backend.update('events', event.id, { published: !event.published });
+          }
+        }}
+      />
       <Field label="Name" value={form.name} onChangeText={set('name')} />
       <Row>
         <View style={{ flex: 1 }}>
@@ -196,7 +211,7 @@ function SeasonGenerator({ existing, onCreated }: { existing: EventWeek[]; onCre
           setBusy(true);
           setError(null);
           try {
-            const rows = drafts.filter((d) => !overlaps.includes(d)).map((d) => ({ ...d, ...DEFAULTS, timezone: DEFAULT_TZ, umpireCode: null }));
+            const rows = drafts.filter((d) => !overlaps.includes(d)).map((d) => ({ ...d, ...DEFAULTS, timezone: DEFAULT_TZ, published: false, settings: null }));
             const created = await backend.insert('events', rows);
             onCreated(created[0]?.id ?? null);
             showMessage('Season created', `${created.length} weeks added.`);
@@ -212,34 +227,60 @@ function SeasonGenerator({ existing, onCreated }: { existing: EventWeek[]; onCre
   );
 }
 
-/** The code umpires enter on their scoring screen for this week. */
-function UmpireCode({ event }: { event: EventWeek }) {
+/** Each umpire (or crew) gets their own code for the week; the label shows who scored each game. */
+function UmpireCodes({ event }: { event: EventWeek }) {
   const backend = useBackend();
+  const codes = useTable('umpire_codes', { eq: { eventId: event.id } });
+  const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
-  const make = async () => {
-    if (event.umpireCode && !(await confirmAction('Change the umpire code?', 'The old code stops working right away. Send the new one to your umpires.', 'Change code'))) return;
-    setBusy(true);
-    try {
-      await backend.update('events', event.id, { umpireCode: randomToken(6) });
-    } finally {
-      setBusy(false);
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
   return (
     <Card>
-      <H2 style={{ fontSize: 18 }}>Umpire code · {event.name}</H2>
-      <Caption>Umpires open “Umpire? Enter scores” on the sign-in screen and enter this code to score this week’s games and record baseballs used. No account needed.</Caption>
-      {event.umpireCode ? (
-        <Row style={{ flexWrap: 'wrap' }}>
-          <Body selectable style={{ fontSize: 28, fontWeight: '800', letterSpacing: 3, color: C.navy }}>
-            {event.umpireCode}
-          </Body>
-          <Button title="Copy" icon="copy" variant="secondary" small onPress={() => Clipboard.setStringAsync(event.umpireCode!)} />
-          <Button title="New code" variant="ghost" small loading={busy} onPress={make} />
+      <H2 style={{ fontSize: 18 }}>Umpire codes · {event.name}</H2>
+      <Caption>
+        Give each umpire or crew their own code. They open “Umpire? Enter scores” on the sign-in screen, enter it, and score their games with baseballs used. No
+        account needed. Turning a code off stops it right away.
+      </Caption>
+      {codes.data.length === 0 && <Caption>No codes yet.</Caption>}
+      {codes.data.map((c) => (
+        <Row key={c.id} style={{ flexWrap: 'wrap', paddingVertical: 6, borderTopWidth: 1, borderTopColor: C.border }}>
+          <View style={{ flex: 1, minWidth: 160 }}>
+            <Body selectable style={{ fontSize: 20, fontWeight: '800', letterSpacing: 2, color: c.active ? C.navy : C.muted }}>
+              {c.code}
+            </Body>
+            <Caption>
+              {c.label || 'No label'} · {c.lastUsedAt ? `last used ${relativeTime(c.lastUsedAt)}` : 'not used yet'}
+            </Caption>
+          </View>
+          {!c.active && <Badge label="Off" tone="muted" />}
+          <Button title="Copy" icon="copy" variant="secondary" small onPress={() => Clipboard.setStringAsync(c.code)} />
+          <Button title={c.active ? 'Turn off' : 'Turn on'} variant="ghost" small onPress={() => backend.update('umpire_codes', c.id, { active: !c.active })} />
         </Row>
-      ) : (
-        <Button title="Create umpire code" icon="key" loading={busy} onPress={make} />
-      )}
+      ))}
+      <Row style={{ alignItems: 'flex-end' }}>
+        <View style={{ flex: 1 }}>
+          <Field label="New code for" placeholder="e.g. Mike R. or Fields 7–12 crew" value={label} onChangeText={setLabel} maxLength={60} />
+        </View>
+        <Button
+          title="Create code"
+          icon="key"
+          loading={busy}
+          disabled={!label.trim()}
+          onPress={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              await backend.insert('umpire_codes', [{ eventId: event.id, code: randomToken(6), label: label.trim(), active: true, lastUsedAt: null }]);
+              setLabel('');
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      </Row>
+      <ErrorNote message={error} />
     </Card>
   );
 }

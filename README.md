@@ -23,7 +23,8 @@ A family and tournament-director app for a 12U youth baseball week in Cooperstow
   - **Brackets:** every team goes into a single-elimination bracket by pool record: Championship, then Monster, then Cooper. Teams are split evenly and the top seeds get byes. Bracket play starts one slot after the last pool game. A team's first bracket game counts toward the 3-a-day limit, and a team still winning may play a 4th.
   - **Before posting:** the director sees games per day, brackets, seeds and byes, and when each round plays. Bracket games show "Seed #N" until the director taps **Seed brackets from pool play**, which uses the standings order: win %, head to head, runs allowed, capped run differential, runs scored.
   - **Check:** on the real Week 1 2027 teams it reproduces the brief exactly: 397 games (300 pool, 97 bracket) and 84/84/84/72/66/7 games a day.
-- **Umpires and baseballs.** Each week has an umpire code (More → Weeks). Umpires open **Umpire? Enter scores** on the sign-in screen, enter the code, pick their day and field, and enter the final score and the **baseballs used**. They don't need an account. Directors can enter or fix baseballs in the game editor, see totals on the Games tab, and export them in the schedule CSV.
+  - **Rules:** like the admin site, a week with scores can't be rebuilt, and seeding opens once every pool game is final.
+- **Umpires and baseballs.** Each umpire or crew gets their own labelled code for the week (More → Weeks). Codes can be turned off, and each one shows when it was last used. Umpires open **Umpire? Enter scores** on the sign-in screen, enter the code, pick their day and field, and enter the final score and the **baseballs used**. They don't need an account. Directors can enter or fix baseballs in the game editor, see totals on the Games tab, and export them in the schedule CSV.
 - **Scores.** Enter and remove scores, and mark games live or final. Going final notifies both teams and advances the bracket winner.
 - **Delays and time changes.** Delay one game (and optionally every later game on that field), or delay a whole block, e.g. *all games after 2:00 PM, all fields, 60 min*. **Every affected team gets a push with its own new time.**
 - **Push alerts.** Send to everyone or to chosen teams. Templates cover lightning hold, all clear, heat advisory, rain-out, and a one-tap **current forecast** post (Open-Meteo).
@@ -37,7 +38,7 @@ npm install
 npm run web        # or: npm run ios / npm run android
 ```
 
-If no Supabase project is configured, the app runs on **built-in sample data**: 16 teams, 192 players, a week in progress with scores. Data is stored on the device. On the sign-in screen, choose **Explore as a parent** or **Explore as a director**. A gold bar at the top of the home screen switches between the two views at any time. You can also sign in with any email and code `123456` (`director@demo.app` signs in as the director). Demo team codes: `STOR-7K2Q`, `THUN-M4TX`, `OUTL-H8RN`. The demo also holds the real **2027 season**: Week 1 (May 30 – June 4) has the 100 registered teams, ready to schedule. Umpire codes: `UMP2027` (Week 1 2027) and `UMPDEMO` (the sample week).
+If no Supabase project is configured, the app runs on **built-in sample data**: 16 teams, 192 players, a week in progress with scores. Data is stored on the device. On the sign-in screen, choose **Explore as a parent** or **Explore as a director**. A gold bar at the top of the home screen switches between the two views at any time. You can also sign in with any email and code `123456` (`director@demo.app` signs in as the director). Demo team codes: `STOR-7K2Q`, `THUN-M4TX`, `OUTL-H8RN`. The demo also holds the real **2027 season**: Week 1 (May 30 – June 4) has the 100 registered teams, ready to schedule. Umpire codes: `UMP2027` and `UMPCREW` (Week 1 2027), and `UMPDEMO` (the sample week).
 
 ## Project layout
 
@@ -54,52 +55,38 @@ src/
   data/
     backend.ts             Backend interface (generic table CRUD + RPCs)
     demo.ts / seed.ts      in-memory demo backend with sample data
-    supabase.ts            Supabase backend (RLS-aware, realtime)
+    cooperstown.ts         backend on the Cooperstown database (utproducts/cooperstown's tables and RPCs)
+    cooperstown-map.ts     row <-> model mapping for that database (tested on real rows)
     services.ts            director workflows: import, scheduling, scores, delays + notifications
   lib/                     pure logic, unit tested: CSV, LeagueApps mapping, team codes,
                            scheduler/standings/bracket, timezone math, weather parsing
-supabase/
-  migrations/              schema, RLS policies, RPCs, push trigger
-  functions/               edge functions: push-dispatch, send-invites, create-checkout, stripe-webhook
-  tests/rls.test.mjs       runs the migration in embedded Postgres and checks the security rules
+supabase/phase2-proposal/  draft family-feature tables, RLS, edge functions and tests (not applied anywhere)
 ```
 
-## Connecting Supabase (production)
+## The Cooperstown database (production)
 
-1. **Create a project** at supabase.com, then link it and apply the schema:
-   ```bash
-   npx supabase link --project-ref <ref>
-   npx supabase db push
-   ```
-2. **Enable email codes.** Under Authentication → Email Templates → *Magic Link*, include `{{ .Token }}` so users receive a 6-digit code (the app signs in with codes, not links).
-3. **Make yourself a director.** Directors are whoever is on the allowlist:
-   ```sql
-   insert into director_allowlist (email) values ('you@yourdomain.com');
-   ```
-4. **Push fan-out secrets.** New notification rows call the `push-dispatch` function through `pg_net`. Store two Vault secrets in the SQL editor:
-   ```sql
-   select vault.create_secret('https://<ref>.supabase.co', 'project_url');
-   select vault.create_secret('<service-role-key>', 'service_role_key');
-   ```
-5. **Deploy the functions and set their secrets:**
-   ```bash
-   npx supabase functions deploy push-dispatch send-invites create-checkout stripe-webhook
-   npx supabase secrets set APP_URL=https://<your-web-domain> \
-     RESEND_API_KEY=... INVITE_FROM_EMAIL="Cooperstown <invites@yourdomain.com>" \
-     STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... \
-     EXPO_ACCESS_TOKEN=...   # optional, if Expo push security is enabled
-   ```
-   In Stripe, add a webhook for `checkout.session.completed` that points to `https://<ref>.supabase.co/functions/v1/stripe-webhook`.
-6. **Configure the app.** Copy `.env.example` to `.env.local` and fill in `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` and `EXPO_PUBLIC_APP_URL`.
+The app runs on the same database as the Cooperstown All Star Village admin site (`utproducts/cooperstown`, Supabase project **cooperstown**, `lkyrieejwifdbnhzcrul`), so directors use one system. To point a build at it, set:
 
-### How privacy works
-- Team names and schedules are visible to any signed-in user.
-- Rosters (first name, last name, jersey number) are visible only to people who **follow that team** (through its code) or have a child on it.
-- Parent contact details and **check-in QR tokens** are visible only to directors and to the player's own guardian, matched by registration email.
-- Team codes are visible only to directors, so a roster can't be discovered without an invitation.
-- Only directors can check players in, change games, post alerts, or see all bookings and orders. Order prices are recomputed on the server.
+```
+EXPO_PUBLIC_SUPABASE_URL=https://lkyrieejwifdbnhzcrul.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<the project's publishable key>
+```
 
-`npm run test:db` checks all of this (31 checks).
+The publishable key is safe to ship. Every rule lives in the database's row-level security (`src/data/cooperstown.ts` uses nothing else). Without these variables, the app runs in demo mode.
+
+**What works on it today:**
+- **Families and coaches** browse **published** weeks without an account and follow their team by picking it from the list. Followed teams are saved on the phone. They get the schedule, scores, standings and brackets.
+- **Staff** sign in with their Cooperstown admin email and password. Membership in the `staff` table makes someone a director. They can:
+  - switch weeks, create weeks, and publish or hide a week;
+  - import teams (team, organization, hometown and team rep go to `teams` and `team_contacts`);
+  - build the week with the same engine as the admin site, then seed the brackets once pool play is final;
+  - move, delay or cancel games, and score games. Final scores go through `staff_score`, so bracket winners advance in the database;
+  - check in each team with the week's checklist (`checkins`);
+  - create per-umpire codes, and turn them on or off.
+- **Umpires** use their own code (`ump_games` / `ump_score`) to enter final scores and baseballs used. Each score records which umpire's code entered it.
+- **Shared rules with the admin site:** a week with scores can't be rebuilt, seeding waits until every pool game is final, and a score can't change once the next bracket game has one.
+
+**Not there yet:** parent accounts, invite codes, player rosters with QR passes, push alerts, meetings and photos. Those screens are hidden when the app is connected to this database. Their tables are drafted in `supabase/phase2-proposal/` and need sign-off before anything is added to the production database. See that folder's README.
 
 ## LeagueApps import format
 
@@ -121,6 +108,7 @@ Directors can download a template from the import screen.
 
 ## Push notifications
 
+- Push alerts need the phase 2 tables, so they're off when the app is connected to the Cooperstown database. They work in demo mode.
 - Native push uses Expo push notifications. Run `npx eas-cli init` once to link an EAS project (this sets `extra.eas.projectId`), then set up credentials: an APNs key for iOS (EAS handles it during `eas build`) and FCM for Android.
 - The web app gets live updates over realtime but doesn't receive push notifications.
 
@@ -141,7 +129,7 @@ Directors can download a template from the import screen.
 
 ```bash
 npm test            # unit tests (CSV/import, codes, scheduler, standings, bracket, delays, time, weather)
-npm run test:db     # schema + RLS checks in embedded Postgres
+npm run test:db     # phase 2 proposal: schema + RLS checks in embedded Postgres
 npm run typecheck
 npm run lint
 ```

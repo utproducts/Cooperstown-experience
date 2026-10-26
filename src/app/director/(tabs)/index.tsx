@@ -9,26 +9,32 @@ import { NotificationItem } from '@/components/notification-item';
 import { Body, Button, Caption, Card, Empty, Eyebrow, Hero, Icon, Progress, Row, Screen, Section, Stat, type IconName } from '@/components/ui';
 import { WeatherCard } from '@/components/weather-card';
 import { C, R, S } from '@/constants/theme';
+import { useBackend, useTable } from '@/data';
 import { useDirectorData } from '@/data/director';
 import type { Game } from '@/data/types';
 import { dateRange, formatDay, localDateKey } from '@/lib/time';
 import { useNow } from '@/lib/use-now';
 
-const ACTIONS: { icon: IconName; label: string; href: string }[] = [
+const ACTIONS: { icon: IconName; label: string; href: string; alerts?: boolean }[] = [
   { icon: 'scan', label: 'Scan check-in', href: '/director/checkin' },
   { icon: 'cloud-upload', label: 'Import registrations', href: '/director/import' },
   { icon: 'construct', label: 'Build schedule', href: '/director/builder' },
-  { icon: 'megaphone', label: 'Send alert', href: '/director/messages' },
+  { icon: 'megaphone', label: 'Send alert', href: '/director/messages', alerts: true },
 ];
 
 export default function DirectorDashboard() {
   const d = useDirectorData();
+  const backend = useBackend();
+  const teamCheckins = useTable('team_checkins');
   const [editing, setEditing] = useState<Game | null>(null);
   const now = useNow();
   const event = d.event;
   const tz = event?.timezone;
   const today = localDateKey(new Date(now).toISOString(), tz);
-  const checked = d.players.filter((p) => p.checkedInAt).length;
+  // Player check-in with rosters; team check-in (Cooperstown's checklist) without.
+  const byTeams = !backend.features.rosters;
+  const checkUnits = byTeams ? d.teams.length : d.players.length;
+  const checked = byTeams ? teamCheckins.data.filter((c) => c.checkedInAt && d.teams.some((t) => t.id === c.teamId)).length : d.players.filter((p) => p.checkedInAt).length;
   const todays = d.games.filter((g) => localDateKey(g.startsAt, tz) === today);
   const live = todays.filter((g) => g.status === 'live');
   const needsScore = d.games.filter((g) => g.status !== 'final' && g.status !== 'cancelled' && g.status !== 'postponed' && new Date(g.startsAt).getTime() + 2 * 3600e3 < now);
@@ -46,7 +52,7 @@ export default function DirectorDashboard() {
       />
 
       <View style={styles.actions}>
-        {ACTIONS.map((a) => (
+        {ACTIONS.filter((a) => !a.alerts || backend.features.alerts).map((a) => (
           <Pressable key={a.label} onPress={() => router.push(a.href as never)} style={({ pressed }) => [styles.action, pressed && { opacity: 0.7 }]}>
             <Icon name={a.icon} size={22} color={C.white} />
             <Text style={styles.actionText}>{a.label}</Text>
@@ -57,13 +63,13 @@ export default function DirectorDashboard() {
       <Card>
         <Row style={{ flexWrap: 'wrap' }} gap={S.lg}>
           <Stat label="Teams" value={d.teams.length} />
-          <Stat label="Players" value={d.players.length} />
+          {!byTeams && <Stat label="Players" value={d.players.length} />}
           <Stat label="Checked in" value={`${checked}`} tone={C.green} />
           <Stat label="Games today" value={todays.length} tone={C.red} />
         </Row>
-        <Progress value={d.players.length ? checked / d.players.length : 0} />
+        <Progress value={checkUnits ? checked / checkUnits : 0} />
         <Caption>
-          {d.players.length ? Math.round((checked / d.players.length) * 100) : 0}% of players checked in · {d.players.length - checked} remaining
+          {checkUnits ? Math.round((checked / checkUnits) * 100) : 0}% of {byTeams ? 'teams' : 'players'} checked in · {checkUnits - checked} remaining
         </Caption>
       </Card>
 
@@ -87,12 +93,14 @@ export default function DirectorDashboard() {
 
       <WeatherCard event={event} />
 
+      {backend.features.alerts && (
       <Section title="Recent alerts" action={<Button title="Compose" variant="ghost" small icon="create" onPress={() => router.push('/director/messages')} />}>
         {d.notifications.slice(0, 3).map((n) => (
           <NotificationItem key={n.id} n={n} audience={n.teamIds.length === 0 ? 'Everyone' : n.teamIds.map((id) => d.teams.find((t) => t.id === id)?.name ?? '').join(', ')} />
         ))}
         {d.notifications.length === 0 && <Body style={{ color: C.muted }}>No alerts sent yet.</Body>}
       </Section>
+      )}
 
       {event && (
         <Card style={{ backgroundColor: C.navy, borderColor: C.navy }}>

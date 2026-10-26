@@ -6,13 +6,22 @@ import { Badge, Body, Button, Caption, Card, Divider, Field, H1, H3, Icon, Progr
 import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
 import { useDirectorData } from '@/data/director';
+import { TeamCheckinScreen } from '@/components/team-checkin';
 import type { CheckInResult } from '@/data/backend';
 import { parseCheckInPayload } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
 
 type Filter = 'pending' | 'all' | 'teams';
 
-export default function CheckIn() {
+export default function CheckInTab() {
+  const { backend } = useAuth();
+  const d = useDirectorData();
+  // Without player rosters, check-in is team by team (Cooperstown's checklist).
+  if (!backend.features.rosters) return <TeamCheckinScreen event={d.event} teams={d.teams} />;
+  return <CheckIn />;
+}
+
+function CheckIn() {
   const { backend, profile } = useAuth();
   const d = useDirectorData();
   const [permission, requestPermission] = useCameraPermissions();

@@ -25,23 +25,39 @@ export default function DirectorMore() {
       <Card>
         <H3>{profile?.name}</H3>
         <Caption>{profile?.email} · Director</Caption>
-        {backend.mode === 'demo' && <Badge label="Demo mode — data is stored on this device" tone="gold" />}
+        {backend.mode === 'demo' ? (
+          <Badge label="Demo mode — data is stored on this device" tone="gold" />
+        ) : (
+          <Badge label="Connected to the Cooperstown database" tone="green" />
+        )}
       </Card>
       <DemoRoleSwitch />
       <Card style={{ gap: 0 }}>
-        <ListItem icon="calendar" title="Weeks" subtitle="Switch weeks, create the season, edit dates and venue" onPress={() => router.push('/director/event')} />
+        <ListItem icon="calendar" title="Weeks" subtitle="Switch weeks, publish, umpire codes, dates and venue" onPress={() => router.push('/director/event')} />
         <Divider />
-        <ListItem icon="people" title="Meetings & sessions" subtitle="Create slots and see who booked" onPress={() => router.push('/director/meetings')} />
-        <Divider />
-        <ListItem icon="camera" title="Photo packages & orders" onPress={() => router.push('/director/orders')} />
-        <Divider />
+        {backend.features.meetings && (
+          <>
+            <ListItem icon="people" title="Meetings & sessions" subtitle="Create slots and see who booked" onPress={() => router.push('/director/meetings')} />
+            <Divider />
+          </>
+        )}
+        {backend.features.photos && (
+          <>
+            <ListItem icon="camera" title="Photo packages & orders" onPress={() => router.push('/director/orders')} />
+            <Divider />
+          </>
+        )}
         <ListItem icon="cloud-upload" title="Import registrations" subtitle="LeagueApps CSV export" onPress={() => router.push('/director/import')} />
         <Divider />
         <ListItem icon="construct" title="Schedule builder" onPress={() => router.push('/director/builder')} />
       </Card>
       <Card style={{ gap: 0 }}>
-        <ListItem icon="download" title="Export check-ins (CSV)" onPress={exportCheckIns} />
-        <Divider />
+        {backend.features.rosters && (
+          <>
+            <ListItem icon="download" title="Export check-ins (CSV)" onPress={exportCheckIns} />
+            <Divider />
+          </>
+        )}
         <ListItem icon="phone-portrait" title="Open family view" subtitle="See the app as parents see it" onPress={() => router.push('/fan')} />
       </Card>
       <Button

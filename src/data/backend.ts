@@ -11,6 +11,8 @@ import type {
   Profile,
   Role,
   Team,
+  TeamCheckin,
+  UmpireCode,
 } from './types';
 
 /** Table name -> row type. Keys are the Postgres table names. */
@@ -25,6 +27,8 @@ export interface Tables {
   photo_products: PhotoProduct;
   photo_orders: PhotoOrder;
   invites: Invite;
+  umpire_codes: UmpireCode;
+  team_checkins: TeamCheckin;
   follows: { id: string; userId: string; teamId: string };
 }
 
@@ -44,6 +48,8 @@ export interface CheckInResult {
 
 export interface UmpireWeek {
   event: Pick<EventWeek, 'id' | 'name' | 'startsOn' | 'endsOn' | 'timezone'>;
+  /** The code's label, e.g. the umpire's name. */
+  label: string;
   games: Game[];
   teams: Pick<Team, 'id' | 'name'>[];
 }
@@ -58,16 +64,40 @@ export interface InviteEmail {
   link: string;
 }
 
+/** What the connected database supports; screens hide what it doesn't. */
+export interface Features {
+  /** Parents sign in (otherwise they browse published weeks as guests). */
+  familyAccounts: boolean;
+  /** Families follow teams with invite codes (otherwise they pick from the list). */
+  followCodes: boolean;
+  /** Player rosters, parent links and per-player QR check-in. */
+  rosters: boolean;
+  /** Push alerts and the alerts feed. */
+  alerts: boolean;
+  meetings: boolean;
+  photos: boolean;
+  /** Invite emails with team codes. */
+  invites: boolean;
+  /** "Live", "delayed" and "postponed" game states (otherwise scheduled / final / cancelled). */
+  liveStatus: boolean;
+}
+
 export interface Backend {
-  readonly mode: 'demo' | 'supabase';
+  /** demo: sample data on this device. cooperstown: the Cooperstown All Star Village database. */
+  readonly mode: 'demo' | 'cooperstown';
+  readonly features: Features;
 
   // --- auth -----------------------------------------------------------------
   currentProfile(): Profile | null;
   onAuthChange(cb: (p: Profile | null) => void): () => void;
   /** Ready once any persisted session has been restored. */
   ready(): Promise<void>;
-  sendSignInCode(email: string): Promise<void>;
-  verifySignInCode(email: string, code: string): Promise<void>;
+  sendSignInCode?(email: string): Promise<void>;
+  verifySignInCode?(email: string, code: string): Promise<void>;
+  /** Staff sign in with email and password. */
+  signInWithPassword?(email: string, password: string): Promise<void>;
+  /** Families browse published weeks without an account. */
+  continueAsGuest?(): Promise<void>;
   /** Demo backend only: sign in as a sample user. */
   demoSignIn?(role: Role): Promise<void>;
   signOut(): Promise<void>;
@@ -92,6 +122,9 @@ export interface Backend {
   /** Starts payment for an order; returns a hosted checkout URL, or null if paid immediately (demo). */
   startCheckout(orderId: string): Promise<string | null>;
   registerPushToken(token: string, platform: string): Promise<void>;
+
+  /** The week's field names in order, when the database keeps them per week. */
+  weekFields?(eventId: string): Promise<string[]>;
 
   // --- umpires (no account: the week's umpire code unlocks scoring) ---------
   /** The week's games for an umpire code; throws with a readable message for a bad code. */

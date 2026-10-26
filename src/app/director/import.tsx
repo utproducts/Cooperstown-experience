@@ -103,7 +103,7 @@ export default function ImportScreen() {
     try {
       const total: ImportSummary = { teamsCreated: 0, teamsUpdated: 0, playersCreated: 0, invitesCreated: 0, invitesSent: 0 };
       for (const g of assigned) {
-        const s = await importRegistrations(backend, g.eventId!, g.teams, { sendInvites });
+        const s = await importRegistrations(backend, g.eventId!, g.teams, { sendInvites: sendInvites && backend.features.invites });
         (Object.keys(total) as (keyof ImportSummary)[]).forEach((k) => (total[k] += s[k]));
       }
       setSummary(total);
@@ -253,10 +253,14 @@ export default function ImportScreen() {
             );
           })}
           <Divider />
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Body style={{ flex: 1 }}>Email team codes to parents & coaches now</Body>
-            <Button title={sendInvites ? 'Yes' : 'No'} small variant={sendInvites ? 'dark' : 'secondary'} onPress={() => setSendInvites(!sendInvites)} />
-          </Row>
+          {backend.features.invites ? (
+            <Row style={{ justifyContent: 'space-between' }}>
+              <Body style={{ flex: 1 }}>Email team codes to parents & coaches now</Body>
+              <Button title={sendInvites ? 'Yes' : 'No'} small variant={sendInvites ? 'dark' : 'secondary'} onPress={() => setSendInvites(!sendInvites)} />
+            </Row>
+          ) : (
+            <Caption>Teams, organizations, hometowns and team reps are saved to the Cooperstown database. Player rows and invite emails come with the family features.</Caption>
+          )}
           <Button
             title={
               unassigned > 0
@@ -281,7 +285,7 @@ export default function ImportScreen() {
           </Row>
           <Body>
             {summary.teamsCreated} new teams, {summary.teamsUpdated} updated · {summary.playersCreated} players added · {summary.invitesCreated} invites created
-            {sendInvites ? `, ${summary.invitesSent} emailed` : ' (not sent yet)'}.
+            {!backend.features.invites ? '' : sendInvites ? `, ${summary.invitesSent} emailed` : ' (not sent yet)'}.
           </Body>
           <Row>
             <Button title="View teams" variant="dark" small onPress={() => router.push('/director/teams')} />

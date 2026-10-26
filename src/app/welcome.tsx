@@ -58,6 +58,27 @@ export default function Welcome() {
         </Stack>
       </Hero>
 
+      {backend.continueAsGuest && (
+        <Card>
+          <H2>Families & coaches</H2>
+          <Body style={{ color: C.muted }}>See your team’s games, scores, standings and brackets. No account needed.</Body>
+          <Button
+            title="See the schedule"
+            icon="calendar"
+            loading={busy}
+            onPress={() =>
+              run(async () => {
+                await backend.continueAsGuest!();
+                router.replace((next as never) ?? '/fan');
+              })
+            }
+          />
+        </Card>
+      )}
+
+      {backend.signInWithPassword && <StaffSignIn onDone={done} />}
+
+      {backend.sendSignInCode && (
       <Card>
         <H2>{step === 'email' ? 'Sign in' : 'Check your email'}</H2>
         {step === 'email' ? (
@@ -73,14 +94,14 @@ export default function Welcome() {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
-              onSubmitEditing={() => email && run(async () => (await backend.sendSignInCode(email.trim()), setStep('code')))}
+              onSubmitEditing={() => email && run(async () => (await backend.sendSignInCode!(email.trim()), setStep('code')))}
             />
             <Button
               title="Send code"
               icon="mail"
               loading={busy}
               disabled={!/^\S+@\S+\.\S+$/.test(email.trim())}
-              onPress={() => run(async () => (await backend.sendSignInCode(email.trim()), setStep('code')))}
+              onPress={() => run(async () => (await backend.sendSignInCode!(email.trim()), setStep('code')))}
             />
           </>
         ) : (
@@ -99,13 +120,14 @@ export default function Welcome() {
               title="Sign in"
               loading={busy}
               disabled={code.length !== 6}
-              onPress={() => run(async () => (await backend.verifySignInCode(email.trim(), code), done()))}
+              onPress={() => run(async () => (await backend.verifySignInCode!(email.trim(), code), done()))}
             />
             <Button title="Use a different email" variant="ghost" small onPress={() => setStep('email')} />
           </>
         )}
         <ErrorNote message={error} />
       </Card>
+      )}
 
       <Card onPress={() => router.push('/umpire' as never)} style={{ flexDirection: 'row', alignItems: 'center', gap: S.md }}>
         <Icon name="baseball" color={C.red} size={22} />
@@ -133,5 +155,36 @@ export default function Welcome() {
         </Card>
       )}
     </Screen>
+  );
+}
+
+/** Tournament staff: the same email and password as the Cooperstown admin site. */
+function StaffSignIn({ onDone }: { onDone: () => void }) {
+  const { backend } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await backend.signInWithPassword!(email, password);
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <H2>Tournament staff</H2>
+      <Body style={{ color: C.muted }}>Directors sign in with their Cooperstown admin email and password.</Body>
+      <Field label="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      <Field label="Password" secureTextEntry autoComplete="password" value={password} onChangeText={setPassword} onSubmitEditing={submit} />
+      <Button title="Sign in" icon="log-in" variant="dark" loading={busy} disabled={!email.trim() || !password} onPress={submit} />
+      <ErrorNote message={error} />
+    </Card>
   );
 }

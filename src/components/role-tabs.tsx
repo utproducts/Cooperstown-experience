@@ -16,7 +16,7 @@ export interface TabDef {
 }
 
 /** Bottom tabs on phones, a left sidebar on wide screens (web/tablet). */
-export function RoleTabs({ tabs, weekBar }: { tabs: TabDef[]; weekBar?: boolean }) {
+export function RoleTabs({ tabs, weekBar, hidden = [] }: { tabs: TabDef[]; weekBar?: boolean; hidden?: string[] }) {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
   return (
@@ -44,6 +44,10 @@ export function RoleTabs({ tabs, weekBar }: { tabs: TabDef[]; weekBar?: boolean 
             tabBarIcon: ({ color, size }) => <Icon name={t.icon} color={color as string} size={size} />,
           }}
         />
+      ))}
+      {/* Routes the connected database doesn't support stay out of the tab bar. */}
+      {hidden.map((name) => (
+        <Tabs.Screen key={name} name={name} options={{ href: null }} />
       ))}
     </Tabs>
   );

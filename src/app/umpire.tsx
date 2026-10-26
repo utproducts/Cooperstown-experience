@@ -82,7 +82,7 @@ export default function Umpire() {
             onSubmitEditing={() => code.trim() && load(code)}
           />
           <Button title="See my games" icon="baseball" loading={busy} disabled={!code.trim()} onPress={() => load(code)} />
-          {backend.mode === 'demo' && <Caption>Demo codes: UMP2027 (Week 1 2027) · UMPDEMO (sample week)</Caption>}
+          {backend.mode === 'demo' && <Caption>Demo codes: UMP2027 or UMPCREW (Week 1 2027) · UMPDEMO (sample week)</Caption>}
           <ErrorNote message={error} />
         </Card>
       </Screen>
@@ -101,7 +101,7 @@ export default function Umpire() {
       <Row style={{ justifyContent: 'space-between' }}>
         <View style={{ flex: 1 }}>
           <H1>{week.event.name}</H1>
-          <Caption>Umpire scoring</Caption>
+          <Caption>Umpire scoring{week.label ? ` · ${week.label}` : ''}</Caption>
         </View>
         <Button
           title="Use another code"
