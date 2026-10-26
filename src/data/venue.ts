@@ -1,9 +1,12 @@
+import { useMemo } from 'react';
+
 import type { SiteMapImage } from '@/components/site-map';
 import { imageSource } from '@/components/venue-image';
-import type { ParkRules } from '@/lib/venue';
+import { fitGeo, type LatLng } from '@/lib/geo';
+import { onMap, type ParkRules } from '@/lib/venue';
 
 import { useTable } from './index';
-import type { PlaceKind } from './types';
+import type { Place, PlaceKind } from './types';
 
 /** One of the venue's settings (site map, photos, park rules), or null until staff set it. */
 export function useVenueSetting<T>(key: 'site_map' | 'photos' | 'park_rules') {
@@ -30,7 +33,20 @@ export function useParkPhoto(index = 0) {
 /** The site map picture staff uploaded, or the Village's campus map. */
 export function useSiteMap() {
   const s = useVenueSetting<SiteMapImage>('site_map');
-  return { ...s, value: s.value?.url ? s.value : DEFAULT_SITE_MAP, uploaded: !!s.value?.url };
+  const value = s.value?.url ? s.value : DEFAULT_SITE_MAP;
+  return { ...s, value, uploaded: !!s.value?.url && !s.value.url.startsWith('sample:') };
+}
+
+/** How GPS positions land on the site map, once staff have set reference points (null before). */
+export function useMapGeo() {
+  const { value: map } = useSiteMap();
+  const fit = useMemo(() => fitGeo(map.geo?.points, map.width, map.height), [map]);
+  return { map, fit, sample: !!map.geo?.sample };
+}
+
+/** Where a pinned place really is, worked out from the map. */
+export function placeLatLng(place: Place, fit: ReturnType<typeof fitGeo>): LatLng | null {
+  return fit && onMap(place) ? fit.toLatLng(place.x!, place.y!) : null;
 }
 
 export function useParkRules() {

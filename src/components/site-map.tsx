@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEvent, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Line } from 'react-native-svg';
 
 import { C, R, S } from '@/constants/theme';
 import type { Place } from '@/data/types';
+import type { MapGeo } from '@/lib/geo';
 import { onMap, PLACE_KINDS } from '@/lib/venue';
 
 import { imageSource } from './venue-image';
@@ -13,6 +15,8 @@ export interface SiteMapImage {
   url: string;
   width: number;
   height: number;
+  /** Reference points that put GPS positions on the picture (staff: Site map & places → You’re here). */
+  geo?: MapGeo;
 }
 
 interface CanvasProps {
@@ -22,7 +26,11 @@ interface CanvasProps {
   selectedId?: string | null;
   onSelect?: (p: Place) => void;
   onPlace?: (x: number, y: number) => void;
+  /** Where the phone is, on the picture (0..1): shows "You're here", and a walking line to the selected place. */
+  me?: { x: number; y: number } | null;
 }
+
+const ME = '#1A73E8';
 
 /**
  * The venue's own site map with a pin for each place. At first the whole map fits (nothing cut off); zoom with the
@@ -35,6 +43,7 @@ export function SiteMap({
   selectedId,
   onSelect,
   onPlace,
+  me,
   height = 520,
 }: {
   map: SiteMapImage | null;
@@ -42,6 +51,7 @@ export function SiteMap({
   selectedId?: string | null;
   onSelect?: (p: Place) => void;
   onPlace?: (x: number, y: number) => void;
+  me?: { x: number; y: number } | null;
   height?: number;
 }) {
   const [full, setFull] = useState(false);
@@ -54,7 +64,7 @@ export function SiteMap({
       </View>
     );
   }
-  const canvas = { map, source, places, selectedId, onSelect, onPlace };
+  const canvas = { map, source, places, selectedId, onSelect, onPlace, me };
   return (
     <View style={{ gap: S.sm }}>
       <MapCanvas {...canvas} maxHeight={height} framed onFullScreen={() => setFull(true)} />
@@ -102,6 +112,7 @@ function MapCanvas({
   selectedId,
   onSelect,
   onPlace,
+  me,
   maxHeight,
   framed,
   onFullScreen,
@@ -117,6 +128,9 @@ function MapCanvas({
   const width = fitWidth * zoom;
   const imgHeight = width * ratio;
   const pinned = places.filter(onMap);
+  const target = me ? pinned.find((p) => p.id === selectedId) : undefined;
+  // Keep "You're here" clear of the selected place's label (which sits above its pin) and of the bottom edge.
+  const meLabelAbove = !!me && (target ? target.y! > me.y : me.y > 0.9);
   const ready = box.width > 0 && availHeight > 0;
 
   const place = (e: GestureResponderEvent) => {
@@ -149,11 +163,27 @@ function MapCanvas({
                     accessibilityLabel={`${p.name}, ${k.label}`}
                     onPress={() => onSelect?.(p)}
                     hitSlop={8}
-                    style={[styles.pin, { left: p.x! * width - size / 2, top: p.y! * imgHeight - size / 2, width: size, height: size, borderRadius: size / 2, backgroundColor: k.color }, on && styles.pinOn]}>
+                    style={[styles.pin, { left: p.x! * width - size / 2, top: p.y! * imgHeight - size / 2, width: size, height: size, borderRadius: size / 2, backgroundColor: k.color }, on && styles.pinOn, target && !on && styles.pinFaded]}>
                     <Icon name={k.icon as IconName} size={on ? 20 : 14} color={C.white} />
                   </Pressable>
                 );
               })}
+              {me && target && (
+                <Svg pointerEvents="none" width={width} height={imgHeight} style={StyleSheet.absoluteFill}>
+                  <Line x1={me.x * width} y1={me.y * imgHeight} x2={target.x! * width} y2={target.y! * imgHeight} stroke={C.white} strokeWidth={9} strokeLinecap="round" />
+                  <Line x1={me.x * width} y1={me.y * imgHeight} x2={target.x! * width} y2={target.y! * imgHeight} stroke={ME} strokeWidth={5} strokeDasharray="1 10" strokeLinecap="round" />
+                </Svg>
+              )}
+              {me && (
+                <View pointerEvents="none" style={[styles.me, { left: me.x * width - 22, top: me.y * imgHeight - 22 }]}>
+                  <View style={styles.meDot} />
+                </View>
+              )}
+              {me && (
+                <View pointerEvents="none" style={[styles.meLabel, { left: Math.min(Math.max(me.x * width - 55, 4), width - 114), top: meLabelAbove ? me.y * imgHeight - 50 : me.y * imgHeight + 16 }]}>
+                  <Text style={styles.meLabelText}>You’re here</Text>
+                </View>
+              )}
               {pinned
                 .filter((p) => p.id === selectedId)
                 .map((p) => (
@@ -208,8 +238,13 @@ const styles = StyleSheet.create({
   empty: { borderRadius: R.lg, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', gap: S.sm, padding: S.lg },
   pin: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.white, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3 },
   pinOn: { borderWidth: 3, zIndex: 2 },
+  pinFaded: { opacity: 0.35 },
   label: { position: 'absolute', width: 180, backgroundColor: C.navy, borderRadius: R.sm, paddingVertical: 6, paddingHorizontal: 10, zIndex: 3 },
   labelText: { color: C.white, fontWeight: '700', fontSize: 13, textAlign: 'center' },
+  me: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(26,115,232,0.22)', alignItems: 'center', justifyContent: 'center', zIndex: 4 },
+  meDot: { width: 18, height: 18, borderRadius: 9, backgroundColor: ME, borderWidth: 3, borderColor: C.white },
+  meLabel: { position: 'absolute', width: 110, backgroundColor: ME, borderRadius: R.pill, paddingVertical: 4, zIndex: 4 },
+  meLabelText: { color: C.white, fontWeight: '800', fontSize: 12, textAlign: 'center' },
   zoom: { position: 'absolute', right: 10, top: 10, gap: 6 },
   zoomBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
 });

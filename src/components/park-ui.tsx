@@ -4,8 +4,10 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { C, Fonts, R, S } from '@/constants/theme';
 import type { Place } from '@/data/types';
-import { directionsUrl, onMap, PLACE_KINDS } from '@/lib/venue';
+import { placeLatLng, useMapGeo } from '@/data/venue';
+import { onMap, PLACE_KINDS } from '@/lib/venue';
 
+import { openDirections } from './directions';
 import { imageSource } from './venue-image';
 import { Body, Button, Caption, Card, Icon, Row, type IconName } from './ui';
 
@@ -48,8 +50,12 @@ export function SectionTitle({ eyebrow, title }: { eyebrow?: string; title: stri
 }
 
 /** A place with what families need: hours, where it is, and one-tap map, website, call or directions. */
-export function PlaceCard({ place, children }: { place: Place; children?: React.ReactNode }) {
+export function PlaceCard({ place, children, hideMapLink }: { place: Place; children?: React.ReactNode; hideMapLink?: boolean }) {
   const k = PLACE_KINDS[place.kind];
+  const { fit } = useMapGeo();
+  // Pinned places get their real position from the map; places around town go by address.
+  const spot = placeLatLng(place, fit);
+  const address = [place.name, place.address].filter(Boolean).join(', ');
   const img = imageSource(place.imageUrl);
   return (
     <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
@@ -71,9 +77,11 @@ export function PlaceCard({ place, children }: { place: Place; children?: React.
         {place.description ? <Body>{place.description}</Body> : null}
         {children}
         <Row style={{ flexWrap: 'wrap' }} gap={6}>
-          {onMap(place) && <Button title="On the map" icon="map" small variant="secondary" onPress={() => router.push(`/fan/map?place=${place.id}` as never)} />}
+          {onMap(place) && !hideMapLink && <Button title="On the map" icon="map" small variant="secondary" onPress={() => router.push(`/fan/map?place=${place.id}` as never)} />}
+          {spot && <Button title="Walk" icon="walk" small variant="secondary" onPress={() => openDirections(spot, 'walking')} />}
+          {spot && <Button title="Drive" icon="car" small variant="secondary" onPress={() => openDirections(spot, 'driving')} />}
           {!onMap(place) && (place.address || place.kind === 'attraction' || place.kind === 'lodging') && (
-            <Button title="Directions" icon="navigate" small variant="secondary" onPress={() => Linking.openURL(directionsUrl(place))} />
+            <Button title="Directions" icon="navigate" small variant="secondary" onPress={() => openDirections(address, 'driving')} />
           )}
           {place.website ? <Button title="Website" icon="globe" small variant="secondary" onPress={() => Linking.openURL(place.website)} /> : null}
           {place.phone ? <Button title="Call" icon="call" small variant="secondary" onPress={() => Linking.openURL(`tel:${place.phone.replace(/[^\d+]/g, '')}`)} /> : null}

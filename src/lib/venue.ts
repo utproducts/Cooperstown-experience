@@ -43,7 +43,6 @@ export function byCategory<T extends { category: string; sort: number }>(items: 
 }
 
 /** Google Maps directions to a place off the map (lodging, things to do). */
-export const directionsUrl = (p: Pick<Place, 'name' | 'address'>) => `https://maps.google.com/?q=${encodeURIComponent([p.name, p.address].filter(Boolean).join(', '))}`;
 
 export interface Ceremony {
   date: string;

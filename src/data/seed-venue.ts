@@ -38,6 +38,21 @@ const place = (s: SampleSpot, i: number): Place => ({
   active: true,
 });
 
+// Rough reference points for the demo's "You're here": the Village is near 42.4655, -75.1030 (4158 NY-23, Oneonta),
+// with the campus map taken as north-up and about 900 m across. Staff measure real ones under Site map & places.
+const SAMPLE_GEO = (() => {
+  const center = { lat: 42.4655, lng: -75.103 };
+  const span = 900;
+  const at = (x: number, y: number, label: string) => ({
+    x,
+    y,
+    label,
+    lat: center.lat + ((0.5 - y) * span) / 111_320,
+    lng: center.lng + ((x - 0.5) * span) / (111_320 * Math.cos((center.lat * Math.PI) / 180)),
+  });
+  return { sample: true, points: [at(0.2, 0.3, 'Hotel parking'), at(0.92, 0.44, 'Field 1'), at(0.45, 0.83, 'Field 10')] };
+})();
+
 /** Park rules shown to families. The demo's are samples: each venue enters its own. */
 export const SAMPLE_PARK_RULES = {
   sample: true,
@@ -133,7 +148,7 @@ export function buildVenueSeed({ eventId, arrival, teams, players }: { eventId: 
   );
 
   const venue_settings: VenueSetting[] = [
-    { id: 'site_map', value: { url: 'sample:asv-site-map', width: 2000, height: 2000 } },
+    { id: 'site_map', value: { url: 'sample:asv-site-map', width: 2000, height: 2000, geo: SAMPLE_GEO } },
     { id: 'photos', value: { hero: ['sample:asv-entrance', 'sample:asv-deck', 'sample:asv-country-inn'] } },
     { id: 'park_rules', value: SAMPLE_PARK_RULES },
   ];

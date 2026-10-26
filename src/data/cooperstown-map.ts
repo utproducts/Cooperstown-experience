@@ -6,9 +6,9 @@ import type { AppNotification, EventWeek, Game, NotificationKind, Player, Team, 
 // The tournament's grounds (weather and directions).
 export const VENUE = {
   venue: 'Cooperstown All Star Village',
-  address: '4158 State Highway 7, Oneonta, NY 13820',
-  latitude: 42.4512,
-  longitude: -75.0663,
+  address: '4158 State Highway 23, Oneonta, NY 13820',
+  latitude: 42.4655,
+  longitude: -75.103,
 };
 
 export interface WeekRow {

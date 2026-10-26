@@ -13,11 +13,11 @@ import { includedItems, uniformItems } from '@/lib/uniform';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULTS = {
-  venue: 'Cooperstown, NY',
-  address: 'Cooperstown, NY 13326',
+  venue: 'Cooperstown All Star Village',
+  address: '4158 State Highway 23, Oneonta, NY 13820',
   checkInWindow: '12:00 PM – 6:00 PM ET on arrival day',
-  latitude: 42.7006,
-  longitude: -74.9243,
+  latitude: 42.4655,
+  longitude: -75.103,
 };
 
 export default function Weeks() {

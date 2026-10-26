@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import { Badge, Body, Button, Caption, Card, Empty, Eyebrow, H1, H2, H3, Icon, ListItem, Progress, Row, Screen, Segmented, Stack } from '@/components/ui';
+import { Badge, Body, Button, Caption, Card, Empty, Eyebrow, H1, H3, Icon, ListItem, Progress, Row, Screen, Segmented, Stack } from '@/components/ui';
 import { UniformHandout } from '@/components/uniform';
 import { CHECKLIST } from '@/content/guide';
 import { C, Fonts, R, S } from '@/constants/theme';
