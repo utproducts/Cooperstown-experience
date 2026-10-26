@@ -355,3 +355,31 @@ export async function rescheduleGame(
     });
   }
 }
+
+/** Trades two games' times and fields (e.g. to fix a double-booked field). Both games' teams are notified. */
+export async function swapGames(backend: Backend, event: EventWeek, a: Game, b: Game, teams: Team[], reason: string) {
+  await rescheduleGame(backend, event, a, teams, { startsAt: b.startsAt, field: b.field }, reason);
+  await rescheduleGame(backend, event, b, teams, { startsAt: a.startsAt, field: a.field }, reason);
+}
+
+/** Changes who plays in a game. Every team added or taken off it is told. */
+export async function changeGameTeams(
+  backend: Backend,
+  event: EventWeek,
+  game: Game,
+  teams: Team[],
+  next: { homeTeamId: string | null; awayTeamId: string | null },
+  reason: string,
+) {
+  if (game.status === 'final') throw new Error('This game has a final score. Remove the score first, then change the teams.');
+  if (next.homeTeamId && next.homeTeamId === next.awayTeamId) throw new Error('A team can’t play itself.');
+  await backend.update('games', game.id, { homeTeamId: next.homeTeamId, awayTeamId: next.awayTeamId });
+  const ids = [...new Set([game.homeTeamId, game.awayTeamId, next.homeTeamId, next.awayTeamId].filter(Boolean) as string[])];
+  if (!ids.length) return;
+  await notify(backend, event.id, {
+    kind: 'schedule',
+    title: `G${game.number} matchup changed`,
+    body: `G${game.number} is now ${teamName(teams, next.awayTeamId, game.awayLabel)} at ${teamName(teams, next.homeTeamId, game.homeLabel)}, ${formatDateTime(game.startsAt, event.timezone)} on ${game.field}.${reason ? `\n${reason}` : ''}`,
+    teamIds: ids,
+  });
+}

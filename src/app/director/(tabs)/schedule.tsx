@@ -22,15 +22,22 @@ export default function DirectorGames() {
   const [editing, setEditing] = useState<Game | null>(null);
   const [stage, setStage] = useState<Stage>('all');
   const [bulk, setBulk] = useState(false);
+  const [query, setQuery] = useState('');
+  const [field, setField] = useState('all');
   const tz = d.event?.timezone;
+  const fields = useMemo(() => [...new Set(d.games.map((g) => g.field))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), [d.games]);
 
-  const games = useMemo(
-    () =>
-      d.games.filter((g) =>
-        stage === 'all' ? true : stage === 'open' ? g.status !== 'final' && g.status !== 'cancelled' : g.stage === stage,
-      ),
-    [d.games, stage],
-  );
+  const games = useMemo(() => {
+    const q = query.trim().toLowerCase().replace(/^g(?=\d)/, '');
+    const name = (id: string | null, label: string | null) => (d.teams.find((t) => t.id === id)?.name ?? label ?? '').toLowerCase();
+    return d.games.filter(
+      (g) =>
+        (stage === 'all' ? true : stage === 'open' ? g.status !== 'final' && g.status !== 'cancelled' : g.stage === stage) &&
+        (field === 'all' || g.field === field) &&
+        // "G34" or "34" finds game 34; anything else matches a team (or "Seed #5" / "Winner G41") or a bracket.
+        (!q || String(g.number) === q || `${name(g.homeTeamId, g.homeLabel)} ${name(g.awayTeamId, g.awayLabel)} ${(g.bracket ?? '').toLowerCase()}`.includes(q)),
+    );
+  }, [d.games, d.teams, stage, field, query]);
 
   function exportCsv() {
     const name = (id: string | null, l: string | null) => d.teams.find((t) => t.id === id)?.name ?? l ?? '';
@@ -65,6 +72,10 @@ export default function DirectorGames() {
       </Row>
       <GameEditorHint />
       <BaseballsSummary games={d.games} />
+      <Field placeholder="Search a team, or a game number like G34" value={query} onChangeText={setQuery} autoCorrect={false} autoCapitalize="none" />
+      {fields.length > 1 && (
+        <Segmented value={field} onChange={setField} options={[{ value: 'all', label: 'All fields' }, ...fields.map((f) => ({ value: f, label: f }))]} />
+      )}
       <Segmented
         value={stage}
         onChange={setStage}
@@ -75,6 +86,11 @@ export default function DirectorGames() {
           { value: 'bracket', label: 'Brackets' },
         ]}
       />
+      {d.games.length > 0 && (
+        <Caption>
+          Showing {games.length} of {d.games.length} games{query || field !== 'all' || stage !== 'all' ? '' : ' · filter by day below'}
+        </Caption>
+      )}
       <GamesByDay games={games} teams={d.teams} timeZone={tz} onPressGame={setEditing} emptyText="No games yet — use Build schedule." showBaseballs />
       {editing && d.event && <GameEditor key={editing.id} game={editing} event={d.event} teams={d.teams} games={d.games} onClose={() => setEditing(null)} />}
       {bulk && d.event && (
