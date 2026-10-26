@@ -1,0 +1,29 @@
+# Builds the live web app (on the Cooperstown database, publishable key only) and publishes it to the gh-pages branch:
+#   https://utproducts.github.io/Cooperstown-experience/
+name: Deploy web app to GitHub Pages
+on:
+  push:
+    branches: [main, claude/cooperstown-experience-app]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: scripts/build-pages.sh dist-pages
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist-pages
+          publish_branch: gh-pages
