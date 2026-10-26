@@ -193,10 +193,18 @@ export function GameEditor({
       {mode === 'time' && (
         <>
           <Caption>Day</Caption>
-          <Segmented value={date} onChange={setDate} options={days.map((x, i) => ({ value: x, label: `Day ${i + 1} · ${formatDay(x)}` }))} />
+          <Row style={{ flexWrap: 'wrap' }} gap={6}>
+            {days.map((x, i) => (
+              <Button key={x} title={`Day ${i + 1} · ${formatDay(x)}`} small variant={date === x ? 'dark' : 'secondary'} onPress={() => setDate(x)} />
+            ))}
+          </Row>
           <TimeSelect label="Start time" value={time} onChange={setTime} step={15} max="23:45" timeZone={event.timezone} />
           <Caption>Field</Caption>
-          <Segmented value={field} onChange={setField} options={fields.map((f) => ({ value: f, label: f }))} />
+          <Row style={{ flexWrap: 'wrap' }} gap={6}>
+            {fields.map((f) => (
+              <Button key={f} title={f} small variant={field === f ? 'dark' : 'secondary'} onPress={() => setField(f)} />
+            ))}
+          </Row>
           <ConflictList conflicts={moveConflicts} timeZone={event.timezone} teams={teams} onSwap={
             (other) => run(() => swapGames(backend, event, game, other, teams, reason))
           } busy={busy} />
