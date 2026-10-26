@@ -5,10 +5,12 @@ import { Badge, Body, Button, Caption, Card, Divider, Field, H1, H3, Icon, Progr
 import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
 import { useDirectorData } from '@/data/director';
+import { CheckInConfirmSheet } from '@/components/checkin-confirm';
 import { QrScanner } from '@/components/qr-scanner';
 import { TeamBag, UniformHandout } from '@/components/uniform';
 import { TeamCheckinScreen } from '@/components/team-checkin';
 import type { CheckInResult } from '@/data/backend';
+import type { Player } from '@/data/types';
 import { parseCheckInPayload } from '@/lib/codes';
 import { formatTime } from '@/lib/time';
 import { sizeLine, uniformItems } from '@/lib/uniform';
@@ -42,6 +44,7 @@ function CheckIn({ header }: { header?: ReactNode }) {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; title: string; detail: string; uniform?: Record<string, string> } | null>(null);
   const items = uniformItems(d.event);
+  const [confirming, setConfirming] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('pending');
   const lastScan = useRef<{ value: string; at: number }>({ value: '', at: 0 });
@@ -89,12 +92,17 @@ function CheckIn({ header }: { header?: ReactNode }) {
       if (!(await confirmAction('Undo check-in?', 'Mark this player as not checked in.', 'Undo'))) return;
       await backend.update('players', playerId, { checkedInAt: null, checkedInBy: null });
     } else {
-      await backend.update('players', playerId, { checkedInAt: new Date().toISOString(), checkedInBy: profile?.id ?? null });
-      // Same as a scan: show what to hand them.
-      const p = d.players.find((x) => x.id === playerId);
-      if (p) setResult({ ok: true, title: `${p.firstName} ${p.lastName} checked in`, detail: [teamName(p.teamId), p.jerseyNumber ? `#${p.jerseyNumber}` : null].filter(Boolean).join(' · '), uniform: p.uniform ?? {} });
+      // By hand there's no pass to prove who it is: confirm the details first.
+      setConfirming(playerId);
     }
   }
+
+  async function confirmCheckIn(p: Player, uniform: Record<string, string>) {
+    await backend.update('players', p.id, { checkedInAt: new Date().toISOString(), checkedInBy: profile?.id ?? null, uniform });
+    // Same as a scan: show what to hand them.
+    setResult({ ok: true, title: `${p.firstName} ${p.lastName} checked in`, detail: [teamName(p.teamId), p.jerseyNumber ? `#${p.jerseyNumber}` : null].filter(Boolean).join(' · '), uniform });
+  }
+  const confirmPlayer = d.players.find((x) => x.id === confirming);
 
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
@@ -202,6 +210,16 @@ function CheckIn({ header }: { header?: ReactNode }) {
           ))}
           {list.length > 100 && <Caption>Showing 100 of {list.length}. Search to narrow down.</Caption>}
         </Card>
+      )}
+      {confirmPlayer && (
+        <CheckInConfirmSheet
+          key={confirmPlayer.id}
+          player={confirmPlayer}
+          team={d.teams.find((t) => t.id === confirmPlayer.teamId)}
+          items={items}
+          onConfirm={(uniform) => confirmCheckIn(confirmPlayer, uniform)}
+          onClose={() => setConfirming(null)}
+        />
       )}
     </Screen>
   );
