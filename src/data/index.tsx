@@ -17,8 +17,9 @@ export const APP_URL =
 function makeBackend(): Backend {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-  // The Cooperstown All Star Village database when configured; sample data on the device otherwise.
-  return url && key ? createCooperstownBackend(url, key) : createDemoBackend(APP_URL);
+  // The Cooperstown All Star Village database when configured; sample data on the device otherwise, or when the
+  // build asks for the demo (EXPO_PUBLIC_DEMO=1, the TestFlight demo build in eas.json).
+  return url && key && process.env.EXPO_PUBLIC_DEMO !== '1' ? createCooperstownBackend(url, key) : createDemoBackend(APP_URL);
 }
 
 interface Ctx {

@@ -15,9 +15,17 @@
     "production": {
       "autoIncrement": true,
       "channel": "production"
+    },
+    "demo": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_DEMO": "1",
+        "EXPO_PUBLIC_APP_URL": "https://utproducts.github.io/Cooperstown-experience/demo"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "demo": {}
   }
 }

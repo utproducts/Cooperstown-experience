@@ -134,7 +134,22 @@ Directors can download a template from the import screen.
   npx expo run:ios --device   # your iPhone on USB (pick your Apple ID team when asked)
   ```
   The Simulator has no camera, so scan passes on a real iPhone.
-- **iOS and Android:**
+- **Home screen:** open either web address in Safari, tap Share → Add to Home Screen. It opens full screen with the
+  Village logo as its icon.
+- **TestFlight (iPhone):** the `demo` profile in `eas.json` builds the app on sample data (parent/staff switch);
+  `production` builds it on the Cooperstown database. Built in Expo's cloud, so no Xcode needed.
+  ```bash
+  git pull && npm install
+  npx eas-cli@latest login                                            # free Expo account (expo.dev/signup)
+  npx eas-cli@latest build --platform ios --profile demo --auto-submit
+  ```
+  The first run asks to link an Expo project (say yes; it writes the project ID into `app.json`: commit that), then for
+  your Apple ID. Let EAS make the certificates and provisioning profile, and the App Store Connect app. The build takes
+  about 15–25 minutes, then it's sent to TestFlight; Apple takes another 5–30 minutes to process it. Install
+  **TestFlight** from the App Store on the iPhone, signed in with the same Apple ID, and the app appears there. To add
+  others: App Store Connect → the app → TestFlight → Internal Testing (up to 100 people on your team, no review) or
+  External Testing (anyone by email or public link, after a short Apple review).
+- **iOS and Android stores:**
   ```bash
   npx eas-cli build --platform all --profile production
   npx eas-cli submit --platform ios      # App Store Connect
