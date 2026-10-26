@@ -6,7 +6,7 @@ import { buildSeed, DEMO_USERS, type SeedTables } from './seed';
 import { weekRange } from '../lib/weeks';
 import type { Profile, Role } from './types';
 
-const STORAGE_KEY = 'cxp-demo-v1';
+const STORAGE_KEY = 'cxp-demo-v2';
 
 /**
  * In-memory backend with sample data, persisted to device storage. Used when
