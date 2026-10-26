@@ -118,6 +118,15 @@ Directors can download a template from the import screen.
 
 - **Live web app:** https://utproducts.github.io/Cooperstown-experience/ runs on the Cooperstown database, and https://utproducts.github.io/Cooperstown-experience/demo/ is the full demo on sample data (every screen, with the parent/director switch), linked from the sign-in screen. `.github/workflows/pages.yml` runs the tests, builds both with `scripts/build-pages.sh` and publishes the `gh-pages` branch on every push.
 - **Web:** `npx expo export -p web` creates `dist/`. Host it anywhere static (Vercel, Netlify, Cloudflare Pages) with a SPA fallback to `index.html`, so links like `/follow/CODE` and `/director/...` resolve.
+- **On your Mac (Xcode Simulator or your iPhone):** `.env` points the app at the Cooperstown database.
+  ```bash
+  git clone https://github.com/utproducts/Cooperstown-experience.git && cd Cooperstown-experience
+  git checkout claude/cooperstown-experience-app
+  npm install
+  npx expo run:ios            # builds with Xcode and opens the iPhone Simulator
+  npx expo run:ios --device   # your iPhone on USB (pick your Apple ID team when asked)
+  ```
+  The Simulator has no camera, so scan passes on a real iPhone.
 - **iOS and Android:**
   ```bash
   npx eas-cli build --platform all --profile production
