@@ -14,7 +14,7 @@ const MEDAL = ['#C9A227', '#A7B1BE', '#B87333'];
 /** The week's skills competition: one leaderboard per event, your team's players highlighted. */
 export default function SkillsCompetition() {
   const d = useFanData();
-  const photo = useParkPhoto(1);
+  const photo = useParkPhoto(2);
   const eventId = d.event?.id ?? '__none__';
   const events = useTable('skills_events', { eq: { eventId }, order: { column: 'sort' } });
   const ids = events.data.map((e) => e.id);

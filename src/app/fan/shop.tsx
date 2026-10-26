@@ -7,7 +7,7 @@ import { useParkPhoto } from '@/data/venue';
 /** Official apparel, hats and pins. Paid at pickup until online payment is connected. */
 export default function Shop() {
   const d = useFanData();
-  const photo = useParkPhoto(1);
+  const photo = useParkPhoto(2);
   const products = useTable('products', { eq: { kind: 'apparel' }, order: { column: 'sort' } });
   const eventId = d.event?.id ?? null;
   return (

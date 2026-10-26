@@ -8,7 +8,7 @@ import { saveScore } from './services';
 import type { Profile, Role } from './types';
 
 // v6: the venue (map, shop, concessions, restaurants, skills competition).
-const STORAGE_KEY = 'cxp-demo-v6';
+const STORAGE_KEY = 'cxp-demo-v7';
 
 /**
  * In-memory backend with sample data, persisted to device storage. Used when

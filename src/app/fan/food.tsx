@@ -12,7 +12,7 @@ import { usePlaces, useParkPhoto } from '@/data/venue';
 export default function Food() {
   const { field, spot } = useLocalSearchParams<{ field?: string; spot?: string }>();
   const d = useFanData();
-  const photo = useParkPhoto(0);
+  const photo = useParkPhoto(1);
   const products = useTable('products', { eq: { kind: 'concession' }, order: { column: 'sort' } });
   const fieldPlaces = usePlaces('field');
   const eventId = d.event?.id ?? null;

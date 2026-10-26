@@ -134,7 +134,7 @@ export function buildVenueSeed({ eventId, arrival, teams, players }: { eventId: 
 
   const venue_settings: VenueSetting[] = [
     { id: 'site_map', value: { url: 'sample:asv-site-map', width: 2000, height: 2000 } },
-    { id: 'photos', value: { hero: ['sample:asv-deck', 'sample:asv-country-inn'] } },
+    { id: 'photos', value: { hero: ['sample:asv-entrance', 'sample:asv-deck', 'sample:asv-country-inn'] } },
     { id: 'park_rules', value: SAMPLE_PARK_RULES },
   ];
 

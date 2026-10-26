@@ -7,7 +7,7 @@ import { useParkPhoto, useParkRules } from '@/data/venue';
 /** What families can and can't bring into the park. */
 export default function ParkRules() {
   const { value: rules, loading, refresh } = useParkRules();
-  const photo = useParkPhoto(1);
+  const photo = useParkPhoto(2);
   return (
     <Screen refreshing={loading} onRefresh={refresh}>
       <Hero image={photo} eyebrow="Before you pack" title="Park rules" subtitle="What you can bring, what stays home, and how to have a great week." />

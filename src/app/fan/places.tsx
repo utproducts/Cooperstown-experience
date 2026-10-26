@@ -17,7 +17,7 @@ const COPY: Partial<Record<PlaceKind, { eyebrow: string; title: string; subtitle
 export default function Places() {
   const { kind = 'vendor' } = useLocalSearchParams<{ kind?: PlaceKind }>();
   const places = usePlaces(kind);
-  const photo = useParkPhoto(kind === 'attraction' ? 1 : 0);
+  const photo = useParkPhoto(kind === 'attraction' ? 2 : 0);
   const copy = COPY[kind] ?? { eyebrow: 'The park', title: PLACE_KINDS[kind]?.plural ?? 'Places', subtitle: '', empty: 'Nothing here yet.' };
   const shown = places.data.filter((p) => p.active);
   return (

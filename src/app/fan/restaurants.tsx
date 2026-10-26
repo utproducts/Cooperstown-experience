@@ -9,7 +9,7 @@ import { usePlaces, useParkPhoto } from '@/data/venue';
 /** The park's restaurants: tap one for its menu and to request a table. */
 export default function Restaurants() {
   const places = usePlaces('restaurant');
-  const fallback = useParkPhoto(0);
+  const fallback = useParkPhoto(1);
   const list = places.data.filter((p) => p.active);
   return (
     <Screen refreshing={places.loading} onRefresh={places.refresh}>

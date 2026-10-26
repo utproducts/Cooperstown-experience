@@ -29,7 +29,7 @@ export default function DirectorDashboard() {
   const teamCheckins = useTable('team_checkins');
   const [editing, setEditing] = useState<Game | null>(null);
   const now = useNow();
-  const photo = useParkPhoto(1);
+  const photo = useParkPhoto(2);
   const event = d.event;
   const tz = event?.timezone;
   const today = localDateKey(new Date(now).toISOString(), tz);

@@ -22,7 +22,7 @@ export default function Restaurant() {
   const places = usePlaces('restaurant');
   const r = places.data.find((p) => p.id === id);
   const menu = useTable('products', { eq: { kind: 'menu', placeId: id } });
-  const fallback = useParkPhoto(0);
+  const fallback = useParkPhoto(1);
   const tz = d.event?.timezone ?? DEFAULT_TZ;
   const today = localDateKey(new Date().toISOString(), tz);
   const days = (d.event ? dateRange(d.event.startsOn, d.event.endsOn) : [today]).filter((x) => x >= today);
