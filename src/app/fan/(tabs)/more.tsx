@@ -39,7 +39,7 @@ export default function More() {
         {profile?.role === 'director' && (
           <>
             <Divider />
-            <ListItem icon="clipboard" title="Director tools" onPress={() => router.replace('/director')} />
+            <ListItem icon="clipboard" title="Staff view" onPress={() => router.replace('/director')} />
           </>
         )}
       </Card>

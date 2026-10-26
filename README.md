@@ -38,7 +38,7 @@ npm install
 npm run web        # or: npm run ios / npm run android
 ```
 
-If no Supabase project is configured, the app runs on **built-in sample data**: 16 teams, 192 players, a week in progress with scores. Data is stored on the device. On the sign-in screen, choose **Explore as a parent** or **Explore as a director**. A gold bar at the top of the home screen switches between the two views at any time. You can also sign in with any email and code `123456` (`director@demo.app` signs in as the director). Demo team codes: `STOR-7K2Q`, `THUN-M4TX`, `OUTL-H8RN`. The demo also holds the real **2027 season**: Week 1 (May 30 – June 4) has the 100 registered teams, ready to schedule. Umpire codes: `UMP2027` and `UMPCREW` (Week 1 2027), and `UMPDEMO` (the sample week).
+If no Supabase project is configured, the app runs on **built-in sample data**: 16 teams, 192 players, a week in progress with scores. Data is stored on the device. On the sign-in screen, choose **Explore the Parent view** or **Explore the Staff view**. A gold bar at the top of the home screen switches between the two views at any time. You can also sign in with any email and code `123456` (`director@demo.app` signs in to the Staff view). Demo team codes: `STOR-7K2Q`, `THUN-M4TX`, `OUTL-H8RN`. The demo also holds the real **2027 season**: Week 1 (May 30 – June 4) has the 100 registered teams, ready to schedule. Umpire codes: `UMP2027` and `UMPCREW` (Week 1 2027), and `UMPDEMO` (the sample week).
 
 ## Project layout
 

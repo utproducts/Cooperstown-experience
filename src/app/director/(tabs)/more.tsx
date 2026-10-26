@@ -24,7 +24,7 @@ export default function DirectorMore() {
       <H1>More</H1>
       <Card>
         <H3>{profile?.name}</H3>
-        <Caption>{profile?.email} · Director</Caption>
+        <Caption>{profile?.email} · Staff</Caption>
         {backend.mode === 'demo' ? (
           <Badge label="Demo mode — data is stored on this device" tone="gold" />
         ) : (

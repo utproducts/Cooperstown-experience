@@ -72,7 +72,7 @@ export default function Welcome() {
           <Icon name="flask" color="#8A6A00" size={22} />
           <View style={{ flex: 1 }}>
             <Body style={{ fontWeight: '700' }}>See the full demo</Body>
-            <Caption>Every parent and director screen on sample data, with a one-tap switch between the two.</Caption>
+            <Caption>Every parent and staff screen on sample data, with a one-tap switch between the two.</Caption>
           </View>
           <Icon name="chevron-forward" color={C.muted} size={18} />
         </Card>
@@ -166,11 +166,11 @@ export default function Welcome() {
           </Row>
           <Caption>
             No backend is configured, so the app is running on sample data. Pick a role to explore, or sign in with any email and code
-            123456 (director@demo.app signs in as the director).
+            123456 (director@demo.app opens the Staff view).
           </Caption>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm }}>
-            <Button title="Explore as a parent" icon="people" variant="dark" onPress={() => demo('fan')} style={{ flexGrow: 1 }} />
-            <Button title="Explore as a director" icon="clipboard" variant="secondary" onPress={() => demo('director')} style={{ flexGrow: 1 }} />
+            <Button title="Explore the Parent view" icon="people" variant="dark" onPress={() => demo('fan')} style={{ flexGrow: 1 }} />
+            <Button title="Explore the Staff view" icon="clipboard" variant="secondary" onPress={() => demo('director')} style={{ flexGrow: 1 }} />
           </View>
         </Card>
       )}
@@ -200,7 +200,7 @@ function StaffSignIn({ onDone }: { onDone: () => void }) {
   return (
     <Card>
       <H2>Tournament staff</H2>
-      <Body style={{ color: C.muted }}>Directors sign in with their Cooperstown admin email and password.</Body>
+      <Body style={{ color: C.muted }}>Staff sign in with their Cooperstown admin email and password.</Body>
       <Field label="Email" autoCapitalize="none" autoComplete="email" keyboardType="email-address" value={email} onChangeText={setEmail} />
       <Field label="Password" secureTextEntry autoComplete="password" value={password} onChangeText={setPassword} onSubmitEditing={submit} />
       <Button title="Sign in" icon="log-in" variant="dark" loading={busy} disabled={!email.trim() || !password} onPress={submit} />

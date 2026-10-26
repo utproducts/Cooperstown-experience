@@ -7,7 +7,7 @@ import { useAuth } from '@/data';
 import { Icon } from './ui';
 
 /**
- * Demo mode only: a one-tap switch between the parent and director views, so
+ * Demo mode only: a one-tap switch between the parent and staff views, so
  * people trying the app don't have to sign out and back in.
  */
 export function DemoRoleSwitch() {
@@ -26,8 +26,8 @@ export function DemoRoleSwitch() {
       style={({ pressed }) => [styles.bar, pressed && { opacity: 0.8 }]}>
       <Icon name="swap-horizontal" color="#8A6A00" size={18} />
       <View style={{ flex: 1 }}>
-        <Text style={styles.label}>DEMO · VIEWING AS {isDirector ? 'DIRECTOR' : 'PARENT'}</Text>
-        <Text style={styles.action}>Switch to the {isDirector ? 'parent' : 'director'} view</Text>
+        <Text style={styles.label}>DEMO · {isDirector ? 'STAFF VIEW' : 'PARENT VIEW'}</Text>
+        <Text style={styles.action}>Switch to the {isDirector ? 'Parent' : 'Staff'} view</Text>
       </View>
       <Icon name="chevron-forward" color="#8A6A00" size={18} />
     </Pressable>

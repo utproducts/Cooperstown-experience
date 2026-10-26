@@ -46,7 +46,7 @@ export default function DirectorDashboard() {
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
       <DemoRoleSwitch />
       <Hero
-        eyebrow="Director"
+        eyebrow="Staff view"
         title={event?.name ?? 'No event yet'}
         subtitle={event ? `${formatDay(event.startsOn)} – ${formatDay(event.endsOn)}${dayIdx >= 0 ? ` · Day ${dayIdx + 1}` : ''} · ${event.venue}` : 'Create the season’s weeks under More → Weeks'}
       />
