@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  ImageBackground,
   Platform,
   Pressable,
   RefreshControl,
@@ -12,6 +13,7 @@ import {
   Text,
   TextInput,
   View,
+  type ImageSourcePropType,
   type StyleProp,
   type TextInputProps,
   type TextStyle,
@@ -279,15 +281,42 @@ export function Progress({ value, color = C.green }: { value: number; color?: st
   );
 }
 
-/** Navy hero band with baseball stitching. */
-export function Hero({ eyebrow, title, subtitle, children }: { eyebrow?: string; title: string; subtitle?: string; children?: ReactNode }) {
+/** Navy hero band with baseball stitching, or a park photo with a dark fade so the text stays readable. */
+export function Hero({
+  eyebrow,
+  title,
+  subtitle,
+  children,
+  image,
+  tall,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  children?: ReactNode;
+  image?: ImageSourcePropType | null;
+  tall?: boolean;
+}) {
+  const body = (
+    <>
+      {eyebrow ? <Eyebrow style={{ color: C.gold }}>{eyebrow}</Eyebrow> : null}
+      <Text style={[styles.heroTitle, tall && { fontSize: 34 }]}>{title}</Text>
+      {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
+      {children}
+    </>
+  );
+  if (image) {
+    return (
+      <ImageBackground source={image} resizeMode="cover" style={[styles.hero, styles.heroPhoto, tall && { minHeight: 280 }]} imageStyle={{ borderRadius: R.lg }}>
+        <LinearGradient colors={['rgba(14,35,64,0.05)', 'rgba(14,35,64,0.55)', 'rgba(14,35,64,0.92)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+        {body}
+      </ImageBackground>
+    );
+  }
   return (
     <LinearGradient colors={[C.navy, C.navySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
       <Stitches />
-      {eyebrow ? <Eyebrow style={{ color: C.gold }}>{eyebrow}</Eyebrow> : null}
-      <Text style={styles.heroTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
-      {children}
+      {body}
     </LinearGradient>
   );
 }
@@ -405,6 +434,7 @@ const styles = StyleSheet.create({
   progressTrack: { height: 8, backgroundColor: C.creamDeep, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: 8, borderRadius: 4 },
   hero: { borderRadius: R.lg, padding: S.xl, gap: S.sm, overflow: 'hidden' },
+  heroPhoto: { minHeight: 220, justifyContent: 'flex-end' },
   heroTitle: { fontFamily: Fonts.display, fontSize: 30, fontWeight: '700', color: C.white, letterSpacing: -0.5 },
   heroSubtitle: { fontSize: 15, color: '#C9D4E5', lineHeight: 22 },
   stitchWrap: { position: 'absolute', right: -150, top: -60, width: 300, height: 300 },

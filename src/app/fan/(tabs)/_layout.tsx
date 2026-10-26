@@ -6,14 +6,10 @@ export default function FanTabs() {
   const tabs: (TabDef | false)[] = [
     { name: 'index', title: 'Home', icon: 'home' },
     { name: 'schedule', title: 'Schedule', icon: 'calendar' },
+    { name: 'park', title: 'Park', icon: 'map' },
     features.rosters && { name: 'player', title: 'Player', icon: 'qr-code' },
-    features.alerts && { name: 'alerts', title: 'Alerts', icon: 'notifications' },
     { name: 'more', title: 'More', icon: 'grid' },
   ];
-  return (
-    <RoleTabs
-      tabs={tabs.filter((t): t is TabDef => Boolean(t))}
-      hidden={[!features.rosters && 'player', !features.alerts && 'alerts'].filter(Boolean) as string[]}
-    />
-  );
+  // Alerts open from Home, More and push notifications (/fan/alerts), so they don't take a tab.
+  return <RoleTabs tabs={tabs.filter((t): t is TabDef => Boolean(t))} hidden={['alerts', ...(features.rosters ? [] : ['player'])]} />;
 }

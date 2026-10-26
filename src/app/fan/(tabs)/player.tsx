@@ -11,6 +11,7 @@ import { C, Fonts, R, S } from '@/constants/theme';
 import { useTable } from '@/data';
 import { FamilyWeekLabel } from '@/components/week-picker';
 import { useFanData } from '@/data/fan';
+import { usePlaces } from '@/data/venue';
 import { checkInPayload } from '@/lib/codes';
 import { formatDateTime, formatDay } from '@/lib/time';
 
@@ -39,6 +40,13 @@ export default function PlayerPortal() {
   const roster = useTable('players', { eq: { teamId: player?.teamId ?? '__none__' }, order: { column: 'lastName' } });
   const { done, toggle } = useChecklist(player?.id);
   const event = d.event;
+  const places = usePlaces();
+  const lodging = useTable('team_lodging', { eq: { teamId: player?.teamId ?? '__none__' } });
+  const checkinPlace = places.data.find((p) => p.kind === 'checkin' && p.active);
+  // A player can be put somewhere other than the team's bunkhouse (split teams).
+  const bunkId = player?.lodgingPlaceId || lodging.data[0]?.placeId || null;
+  const bunk = places.data.find((p) => p.id === bunkId);
+  const room = player?.lodgingPlaceId ? player.lodgingRoom : lodging.data[0]?.room;
 
   if (!player) {
     return (
@@ -99,6 +107,25 @@ export default function PlayerPortal() {
             onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(`${event.venue}, ${event.address}`)}`)}
           />
           <ListItem icon="time" title={`Departure ${formatDay(event.endsOn)}`} subtitle="Bunkhouse check-out by 10:00 AM ET" />
+        </Card>
+      )}
+
+      {checkinPlace && (
+        <Card>
+          <Eyebrow>Where to check in</Eyebrow>
+          <ListItem icon="qr-code" title={checkinPlace.name} subtitle={checkinPlace.description || 'Bring this pass on arrival day.'} onPress={() => router.push(`/fan/map?place=${checkinPlace.id}` as never)} />
+        </Card>
+      )}
+
+      {bunk && (
+        <Card style={{ borderLeftWidth: 4, borderLeftColor: '#8B5E3C' }}>
+          <Eyebrow>Your bunkhouse</Eyebrow>
+          <ListItem
+            icon="bed"
+            title={`${bunk.name}${room ? ` · ${room}` : ''}`}
+            subtitle={bunk.description || 'Tap to see it on the park map.'}
+            onPress={() => router.push(`/fan/map?place=${bunk.id}` as never)}
+          />
         </Card>
       )}
 

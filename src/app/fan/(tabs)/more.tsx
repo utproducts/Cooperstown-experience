@@ -23,6 +23,16 @@ export default function More() {
           onPress={() => router.push('/fan/teams')}
         />
         <Divider />
+        {backend.features.alerts && (
+          <>
+            <ListItem icon="notifications" title="Alerts" subtitle="Weather, delays and announcements" onPress={() => router.push('/fan/alerts')} />
+            <Divider />
+          </>
+        )}
+        <ListItem icon="map" title="The Park" subtitle="Map, food, shop, ceremonies, things to do" onPress={() => router.push('/fan/park' as never)} />
+        <Divider />
+        <ListItem icon="receipt" title="My orders & reservations" subtitle="Food, shop orders and table requests" onPress={() => router.push('/fan/orders' as never)} />
+        <Divider />
         {backend.features.meetings && (
           <>
             <ListItem icon="people" title="Meetings & sessions" subtitle="Book orientation, photo and office-hours slots" onPress={() => router.push('/fan/meetings')} />

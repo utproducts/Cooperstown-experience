@@ -12,6 +12,7 @@ import { C, R, S } from '@/constants/theme';
 import { useAuth } from '@/data';
 import type { Features } from '@/data/backend';
 import { useFanData } from '@/data/fan';
+import { useParkPhoto } from '@/data/venue';
 import { dateRange, formatDay, localDateKey } from '@/lib/time';
 
 const QUICK: { icon: IconName; label: string; href: string; needs?: keyof Features }[] = [
@@ -19,13 +20,17 @@ const QUICK: { icon: IconName; label: string; href: string; needs?: keyof Featur
   { icon: 'calendar', label: 'Schedule', href: '/fan/schedule' },
   { icon: 'people', label: 'Meetings', href: '/fan/meetings', needs: 'meetings' },
   { icon: 'camera', label: 'Photos', href: '/fan/photos', needs: 'photos' },
-  { icon: 'map', label: 'Week guide', href: '/fan/guide' },
+  { icon: 'fast-food', label: 'Order food', href: '/fan/food' },
+  { icon: 'map', label: 'Park map', href: '/fan/map' },
+  { icon: 'trophy', label: 'Skills comp', href: '/fan/skills' },
+  { icon: 'book', label: 'Week guide', href: '/fan/guide' },
   { icon: 'add-circle', label: 'Follow team', href: '/fan/teams' },
 ];
 
 export default function FanHome() {
   const { profile, backend } = useAuth();
   const d = useFanData();
+  const photo = useParkPhoto(0);
   const event = d.event;
   const tz = event?.timezone;
   const today = localDateKey(new Date().toISOString(), tz);
@@ -49,7 +54,7 @@ export default function FanHome() {
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
       <DemoRoleSwitch />
-      <Hero eyebrow="Cooperstown" title={firstName ? `Welcome, ${firstName}` : 'Welcome'} subtitle={status}>
+      <Hero image={photo} tall eyebrow="Cooperstown" title={firstName ? `Welcome, ${firstName}` : 'Welcome'} subtitle={status}>
         <FamilyWeekLabel light />
         {d.myTeams.length > 0 && (
           <Row style={{ flexWrap: 'wrap', marginTop: S.sm }}>
