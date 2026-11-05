@@ -260,7 +260,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.white,
     textAlign: 'center',
     fontSize: 22,
-    fontWeight: '800',
     fontFamily: Fonts.display,
     color: C.ink,
   },

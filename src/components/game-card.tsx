@@ -98,7 +98,7 @@ export function Scoreline({ value }: { value: string }) {
 const styles = StyleSheet.create({
   time: { fontSize: 14, fontWeight: '800', color: C.navy },
   team: { fontSize: 16, fontWeight: '700', color: C.ink, flex: 1, marginRight: S.md },
-  score: { fontSize: 20, fontWeight: '800', color: C.ink, fontFamily: Fonts.display, minWidth: 28, textAlign: 'right' },
+  score: { fontSize: 20, color: C.ink, fontFamily: Fonts.display, minWidth: 28, textAlign: 'right' },
   scoreline: { backgroundColor: C.navy, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   scorelineText: { color: C.white, fontWeight: '800' },
 });

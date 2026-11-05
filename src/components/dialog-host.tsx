@@ -75,7 +75,7 @@ export function DialogHost() {
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(8,22,41,0.55)', alignItems: 'center', justifyContent: 'center', padding: S.lg },
   box: { width: '100%', maxWidth: 420, backgroundColor: C.white, borderRadius: R.lg, padding: S.xl, gap: S.md },
-  title: { fontFamily: Fonts.display, fontSize: 20, fontWeight: '700', color: C.navy },
+  title: { fontFamily: Fonts.display, fontSize: 20, color: C.navy },
   message: { fontSize: 15, lineHeight: 22, color: C.ink },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: S.sm, marginTop: S.sm },
   btn: { minHeight: 44, paddingHorizontal: S.lg, borderRadius: R.md, alignItems: 'center', justifyContent: 'center' },

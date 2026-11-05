@@ -216,5 +216,5 @@ const styles = StyleSheet.create({
   price: { fontSize: 16, fontWeight: '800', color: C.navy },
   bar: { flexDirection: 'row', alignItems: 'center', gap: S.md, backgroundColor: C.navy, borderRadius: R.lg, padding: S.md },
   barTitle: { color: C.white, fontWeight: '800', fontSize: 16 },
-  big: { fontFamily: Fonts.display, fontSize: 26, fontWeight: '700', color: C.navy },
+  big: { fontFamily: Fonts.display, fontSize: 26, color: C.navy },
 });

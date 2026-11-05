@@ -4,7 +4,7 @@ import { Linking, Platform, View } from 'react-native';
 
 import { Body, Button, Caption, Card, ErrorNote, Field, H2, Hero, Icon, Row, Screen, Stack } from '@/components/ui';
 import { C, S } from '@/constants/theme';
-import { BrandLogo } from '@/components/brand';
+import { BrandLogo, UnrivaledEndorsement } from '@/components/brand';
 import { useAuth } from '@/data';
 import { useParkPhoto } from '@/data/venue';
 import type { Role } from '@/data/types';
@@ -64,7 +64,7 @@ export default function Welcome() {
         tall
         eyebrow="12U Youth Baseball"
         title="Your week at the Village"
-        subtitle="Everything your family and team need for the week of a lifetime, in one app.">
+        subtitle="This isn’t just game day. It’s the week they’ll never forget. Everything your family and team need, in one app.">
         <Stack gap={S.sm} style={{ marginTop: S.md }}>
           {FEATURES.map((f) => (
             <Row key={f.text}>
@@ -182,6 +182,7 @@ export default function Welcome() {
           </View>
         </Card>
       )}
+      <UnrivaledEndorsement />
     </Screen>
   );
 }

@@ -117,6 +117,6 @@ export default function Restaurant() {
 }
 
 const styles = StyleSheet.create({
-  h: { fontFamily: Fonts.display, fontSize: 22, fontWeight: '700', color: C.navy },
+  h: { fontFamily: Fonts.display, fontSize: 22, color: C.navy },
   cat: { fontSize: 12, fontWeight: '800', letterSpacing: 1.2, color: C.red, textTransform: 'uppercase', marginTop: S.sm },
 });

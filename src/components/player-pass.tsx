@@ -89,7 +89,7 @@ export function PlayerPassSheet({
 
 const styles = StyleSheet.create({
   card: { backgroundColor: C.navy, borderRadius: R.lg, padding: S.lg, alignItems: 'center', gap: S.sm },
-  name: { fontFamily: Fonts.display, fontSize: 24, fontWeight: '700', color: C.white, textAlign: 'center' },
+  name: { fontFamily: Fonts.display, fontSize: 24, color: C.white, textAlign: 'center' },
   meta: { color: '#C9D4E5', fontWeight: '600', textAlign: 'center' },
   qr: { backgroundColor: C.white, padding: S.md, borderRadius: R.md, marginVertical: S.sm, borderWidth: 4, borderColor: C.red },
 });

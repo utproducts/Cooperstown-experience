@@ -13,7 +13,7 @@ export default function FanSchedule() {
   const tz = d.event?.timezone;
   return (
     <Screen refreshing={d.loading} onRefresh={d.refresh}>
-      <H1>Schedule</H1>
+      <H1>Game Schedule</H1>
       <FamilyWeekLabel />
       <Segmented
         value={tab}

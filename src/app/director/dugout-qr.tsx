@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: S.md },
   card: { width: 230, backgroundColor: C.white, borderRadius: R.lg, borderWidth: 2, borderColor: C.navy, padding: S.md, alignItems: 'center', gap: 6 },
   title: { fontWeight: '800', color: C.red, fontSize: 14, textAlign: 'center' },
-  where: { fontFamily: Fonts.display, fontSize: 24, fontWeight: '700', color: C.navy },
+  where: { fontFamily: Fonts.display, fontSize: 24, color: C.navy },
   spot: { fontWeight: '800', color: C.ink, fontSize: 16 },
 });

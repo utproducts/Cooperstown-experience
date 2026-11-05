@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { C, Fonts, MaxWidth, R, S } from '@/constants/theme';
 
+import { Slash, SpeedLines, UnrivaledMark } from './brand';
 import { requestDialog } from './dialog-host';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -141,7 +142,7 @@ export function Button({
       ) : (
         <>
           {icon && <Icon name={icon} size={small ? 16 : 18} color={v.fg} />}
-          <Text style={[styles.buttonText, small && { fontSize: 14 }, { color: v.fg }]}>{title}</Text>
+          <Text style={[styles.buttonText, small && { fontSize: 13 }, { color: v.fg }]}>{title}</Text>
         </>
       )}
     </Pressable>
@@ -149,11 +150,11 @@ export function Button({
 }
 
 const buttonVariants: Record<ButtonVariant, { bg: string; fg: string; border: string }> = {
-  primary: { bg: C.red, fg: C.white, border: C.red },
+  primary: { bg: C.navy, fg: C.white, border: C.navy },
   dark: { bg: C.navy, fg: C.white, border: C.navy },
-  secondary: { bg: C.white, fg: C.navy, border: C.border },
+  secondary: { bg: C.white, fg: C.navy, border: C.navy },
   ghost: { bg: 'transparent', fg: C.navy, border: 'transparent' },
-  danger: { bg: C.white, fg: C.red, border: C.red },
+  danger: { bg: C.white, fg: C.redDark, border: C.redDark },
 };
 
 export function Field({ label, hint, style, ...props }: TextInputProps & { label?: string; hint?: string }) {
@@ -168,10 +169,10 @@ export function Field({ label, hint, style, ...props }: TextInputProps & { label
 
 type Tone = 'navy' | 'red' | 'green' | 'gold' | 'muted' | 'warn';
 const tones: Record<Tone, { bg: string; fg: string }> = {
-  navy: { bg: '#E6ECF5', fg: C.navy },
-  red: { bg: C.redSoft, fg: C.red },
+  navy: { bg: '#E3E5F4', fg: C.navy },
+  red: { bg: C.redSoft, fg: C.redDark },
   green: { bg: C.greenSoft, fg: C.green },
-  gold: { bg: C.goldSoft, fg: '#8A6A00' },
+  gold: { bg: C.goldSoft, fg: '#00489E' },
   muted: { bg: '#EEF0F3', fg: C.muted },
   warn: { bg: C.warnSoft, fg: C.warn },
 };
@@ -281,7 +282,10 @@ export function Progress({ value, color = C.green }: { value: number; color?: st
   );
 }
 
-/** Navy hero band with baseball stitching, or a park photo with a dark fade so the text stays readable. */
+/**
+ * The page header: a park photo (faded to navy only where the words sit), or navy with speed lines. A red slash in
+ * the corner and the Unrivaled pennant; the title in condensed caps.
+ */
 export function Hero({
   eyebrow,
   title,
@@ -299,36 +303,34 @@ export function Hero({
 }) {
   const body = (
     <>
-      {eyebrow ? <Eyebrow style={{ color: C.gold }}>{eyebrow}</Eyebrow> : null}
-      <Text style={[styles.heroTitle, tall && { fontSize: 34 }]}>{title}</Text>
+      {eyebrow ? <Eyebrow style={{ color: C.sky }}>{eyebrow}</Eyebrow> : null}
+      <Text style={[styles.heroTitle, tall && styles.heroTitleTall]}>{title}</Text>
       {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
       {children}
     </>
   );
+  const marks = (
+    <>
+      <Slash size={tall ? 130 : 104} />
+      <View style={styles.heroMark}>
+        <UnrivaledMark height={20} />
+      </View>
+    </>
+  );
   if (image) {
     return (
-      <ImageBackground source={image} resizeMode="cover" style={[styles.hero, styles.heroPhoto, tall && { minHeight: 280 }]} imageStyle={{ borderRadius: R.lg }}>
-        <LinearGradient colors={['rgba(14,35,64,0.05)', 'rgba(14,35,64,0.55)', 'rgba(14,35,64,0.92)']} locations={[0, 0.45, 1]} style={StyleSheet.absoluteFill} />
+      <ImageBackground source={image} resizeMode="cover" style={[styles.hero, styles.heroPhoto, tall && { minHeight: 300 }]} imageStyle={{ borderRadius: R.lg }}>
+        <LinearGradient colors={['rgba(17,22,63,0)', 'rgba(17,22,63,0.35)', 'rgba(17,22,63,0.9)']} locations={[0, 0.5, 1]} style={StyleSheet.absoluteFill} />
+        {marks}
         {body}
       </ImageBackground>
     );
   }
   return (
-    <LinearGradient colors={[C.navy, C.navySoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-      <Stitches />
+    <View style={[styles.hero, { backgroundColor: C.navy }]}>
+      <SpeedLines />
+      {marks}
       {body}
-    </LinearGradient>
-  );
-}
-
-function Stitches() {
-  return (
-    <View pointerEvents="none" style={styles.stitchWrap}>
-      <View style={styles.stitchCircle}>
-        {Array.from({ length: 14 }).map((_, i) => (
-          <View key={i} style={[styles.stitch, { transform: [{ rotate: `${i * 12 - 80}deg` }, { translateY: -128 }] }]} />
-        ))}
-      </View>
     </View>
   );
 }
@@ -345,8 +347,8 @@ export function ErrorNote({ message }: { message: string | null }) {
   if (!message) return null;
   return (
     <View style={styles.errorNote}>
-      <Icon name="alert-circle" size={18} color={C.red} />
-      <Body style={{ color: C.red, flex: 1 }}>{message}</Body>
+      <Icon name="alert-circle" size={18} color={C.redDark} />
+      <Body style={{ color: C.redDark, flex: 1 }}>{message}</Body>
     </View>
   );
 }
@@ -377,24 +379,21 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, alignItems: 'center' },
   inner: { width: '100%', maxWidth: MaxWidth, gap: S.lg, flexGrow: 1 },
   padded: { padding: S.lg, paddingBottom: S.xxl * 2 },
-  h1: { fontFamily: Fonts.display, fontSize: 30, fontWeight: '700', color: C.navy, letterSpacing: -0.5 },
-  h2: { fontFamily: Fonts.display, fontSize: 22, fontWeight: '700', color: C.navy },
+  h1: { fontFamily: Fonts.display, fontSize: 34, lineHeight: 38, color: C.navy, letterSpacing: 0.3, textTransform: 'uppercase' },
+  h2: { fontFamily: Fonts.display, fontSize: 22, lineHeight: 27, color: C.navy, letterSpacing: 0.3, textTransform: 'uppercase' },
   h3: { fontSize: 17, fontWeight: '700', color: C.ink },
   body: { fontSize: 15, lineHeight: 22, color: C.ink },
   caption: { fontSize: 13, lineHeight: 18, color: C.muted },
-  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', color: C.red },
+  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', color: C.redDark },
   label: { fontSize: 13, fontWeight: '700', color: C.navy },
   card: {
     backgroundColor: C.card,
     borderRadius: R.lg,
     padding: S.lg,
     gap: S.md,
+    // Flat White Smoke boxes; the border matches so a screen can still colour it to highlight a card.
     borderWidth: 1,
-    borderColor: C.border,
-    ...Platform.select({
-      web: { boxShadow: '0 1px 2px rgba(14,35,64,0.06)' },
-      default: { shadowColor: C.navy, shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-    }),
+    borderColor: C.card,
   },
   pressed: { opacity: 0.75 },
   button: {
@@ -408,7 +407,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   buttonSmall: { minHeight: 36, paddingHorizontal: S.md },
-  buttonText: { fontSize: 16, fontWeight: '700' },
+  buttonText: { fontSize: 15, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
   input: {
     backgroundColor: C.white,
     borderWidth: 1,
@@ -426,19 +425,18 @@ const styles = StyleSheet.create({
   listTitle: { fontSize: 16, fontWeight: '600', color: C.ink },
   empty: { alignItems: 'center', justifyContent: 'center', gap: S.sm, padding: S.xl },
   segmented: { gap: S.sm, paddingVertical: 2 },
-  segment: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.pill, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  segment: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.sm, backgroundColor: C.card, borderWidth: 1, borderColor: C.card },
   segmentActive: { backgroundColor: C.navy, borderColor: C.navy },
-  segmentText: { fontSize: 14, fontWeight: '700', color: C.navy },
+  segmentText: { fontSize: 13, fontWeight: '800', color: C.navy, letterSpacing: 0.4, textTransform: 'uppercase' },
   stat: { flex: 1, minWidth: 90, gap: 2 },
-  statValue: { fontSize: 28, fontWeight: '800', fontFamily: Fonts.display },
+  statValue: { fontSize: 28, fontFamily: Fonts.display },
   progressTrack: { height: 8, backgroundColor: C.creamDeep, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: 8, borderRadius: 4 },
-  hero: { borderRadius: R.lg, padding: S.xl, gap: S.sm, overflow: 'hidden' },
-  heroPhoto: { minHeight: 220, justifyContent: 'flex-end' },
-  heroTitle: { fontFamily: Fonts.display, fontSize: 30, fontWeight: '700', color: C.white, letterSpacing: -0.5 },
-  heroSubtitle: { fontSize: 15, color: '#C9D4E5', lineHeight: 22 },
-  stitchWrap: { position: 'absolute', right: -150, top: -60, width: 300, height: 300 },
-  stitchCircle: { width: 300, height: 300, borderRadius: 150, borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
-  stitch: { position: 'absolute', width: 14, height: 3, borderRadius: 2, backgroundColor: 'rgba(200,16,46,0.55)' },
+  hero: { borderRadius: R.lg, padding: S.xl, paddingTop: S.xl + 28, gap: S.sm, overflow: 'hidden' },
+  heroPhoto: { minHeight: 230, justifyContent: 'flex-end' },
+  heroTitle: { fontFamily: Fonts.display, fontSize: 34, lineHeight: 38, color: C.white, letterSpacing: 0.3, textTransform: 'uppercase' },
+  heroTitleTall: { fontSize: 44, lineHeight: 48 },
+  heroSubtitle: { fontSize: 15, color: '#DCE0F5', lineHeight: 22 },
+  heroMark: { position: 'absolute', top: S.lg, left: S.xl },
   errorNote: { flexDirection: 'row', gap: S.sm, alignItems: 'flex-start', backgroundColor: C.redSoft, padding: S.md, borderRadius: R.md },
 });

@@ -120,6 +120,6 @@ export default function DirectorDashboard() {
 
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: S.sm },
-  action: { flexGrow: 1, flexBasis: '45%', backgroundColor: C.red, borderRadius: R.md, padding: S.lg, gap: S.sm },
+  action: { flexGrow: 1, flexBasis: '45%', backgroundColor: C.navy, borderRadius: R.md, borderLeftWidth: 5, borderLeftColor: C.red, padding: S.lg, gap: S.sm },
   actionText: { color: C.white, fontWeight: '800', fontSize: 15 },
 });

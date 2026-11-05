@@ -207,12 +207,12 @@ export default function PlayerPortal() {
 
 const styles = StyleSheet.create({
   qrCard: { backgroundColor: C.navy, borderColor: C.navy, alignItems: 'center', paddingVertical: S.xl },
-  playerName: { fontFamily: Fonts.display, fontSize: 28, fontWeight: '700', color: C.white, textAlign: 'center' },
+  playerName: { fontFamily: Fonts.display, fontSize: 28, color: C.white, textAlign: 'center' },
   playerMeta: { color: '#C9D4E5', fontSize: 15, fontWeight: '600' },
   qrWrap: { backgroundColor: C.white, padding: S.lg, borderRadius: R.lg, marginVertical: S.sm, borderWidth: 4, borderColor: C.red },
   listCard: { borderTopWidth: 4 },
   listIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  listTitle: { fontFamily: Fonts.display, fontSize: 20, fontWeight: '700' },
+  listTitle: { fontFamily: Fonts.display, fontSize: 20 },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: S.md, paddingVertical: 6 },
   roster: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 6 },
   rosterItem: { flexDirection: 'row', alignItems: 'center', gap: S.sm, width: '50%', paddingRight: S.sm },

@@ -1,3 +1,4 @@
+import { Anton_400Regular, useFonts } from '@expo-google-fonts/anton';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -12,11 +13,11 @@ import { Platform } from 'react-native';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-function Effects() {
+function Effects({ fontsReady }: { fontsReady: boolean }) {
   const { ready, profile, backend } = useAuth();
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync().catch(() => {});
-  }, [ready]);
+    if (ready && fontsReady) SplashScreen.hideAsync().catch(() => {});
+  }, [ready, fontsReady]);
   useEffect(() => {
     if (!profile) return;
     getPushToken()
@@ -27,10 +28,12 @@ function Effects() {
 }
 
 export default function RootLayout() {
+  // The headline face; if it fails to load, headlines fall back to the system font rather than holding the app.
+  const [fontsLoaded, fontError] = useFonts({ Anton_400Regular });
   return (
     <SafeAreaProvider>
       <BackendProvider>
-        <Effects />
+        <Effects fontsReady={fontsLoaded || !!fontError} />
         <StatusBar style="dark" />
         <Stack
           screenOptions={{

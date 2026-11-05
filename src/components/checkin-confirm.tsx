@@ -84,6 +84,6 @@ export function CheckInConfirmSheet({
 
 const styles = StyleSheet.create({
   card: { backgroundColor: C.navy, borderRadius: R.lg, padding: S.lg, alignItems: 'center', gap: 4 },
-  name: { fontFamily: Fonts.display, fontSize: 24, fontWeight: '700', color: C.white, textAlign: 'center' },
+  name: { fontFamily: Fonts.display, fontSize: 24, color: C.white, textAlign: 'center' },
   meta: { color: '#C9D4E5', fontWeight: '600', textAlign: 'center' },
 });

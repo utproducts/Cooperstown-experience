@@ -81,10 +81,10 @@ export default function SkillsCompetition() {
 }
 
 const styles = StyleSheet.create({
-  event: { fontFamily: Fonts.display, fontSize: 22, fontWeight: '700', color: C.navy },
+  event: { fontFamily: Fonts.display, fontSize: 22, color: C.navy },
   podium: { flexDirection: 'row', gap: S.sm, marginVertical: S.sm },
   step: { flex: 1, borderWidth: 2, borderRadius: R.lg, padding: S.sm, alignItems: 'center', gap: 2, backgroundColor: C.card },
-  place: { fontFamily: Fonts.display, fontSize: 28, fontWeight: '800' },
+  place: { fontFamily: Fonts.display, fontSize: 28 },
   name: { fontWeight: '800', color: C.ink, fontSize: 14 },
   value: { fontWeight: '800', color: C.navy, fontSize: 16 },
   row: { paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.border },

@@ -1,6 +1,6 @@
 import { Redirect, router, Stack } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
-import { Pressable, Text, useWindowDimensions } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { C } from '@/constants/theme';
 import { useAuth } from '@/data';
@@ -24,15 +24,18 @@ export function RoleTabs({ tabs, weekBar, hidden = [] }: { tabs: TabDef[]; weekB
       screenOptions={{
         headerShown: !!weekBar,
         header: weekBar ? () => <WeekBar /> : undefined,
-        tabBarActiveTintColor: wide ? C.white : C.red,
-        tabBarInactiveTintColor: wide ? '#9FB0C8' : C.muted,
+        tabBarActiveTintColor: C.white,
+        tabBarInactiveTintColor: '#9EA3D1',
+        tabBarLabelStyle: { fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase', fontSize: wide ? 13 : 10 },
         tabBarActiveBackgroundColor: wide ? C.navySoft : undefined,
         tabBarPosition: wide ? 'left' : 'bottom',
         tabBarVariant: wide ? 'material' : 'uikit',
         tabBarLabelPosition: wide ? 'beside-icon' : 'below-icon',
         tabBarStyle: wide
           ? { backgroundColor: C.navy, borderRightWidth: 0, minWidth: 220, paddingTop: 24 }
-          : { backgroundColor: C.white, borderTopColor: C.border },
+          : { backgroundColor: C.navy, borderTopWidth: 0 },
+        // The red rule sits in the background so it doesn't take room from the labels.
+        tabBarBackground: wide ? undefined : () => <View style={{ flex: 1, backgroundColor: C.navy, borderTopWidth: 3, borderTopColor: C.red }} />,
         sceneStyle: { backgroundColor: C.cream },
       }}>
       {tabs.map((t) => (
