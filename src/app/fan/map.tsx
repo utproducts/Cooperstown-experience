@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { openDirections } from '@/components/directions';
@@ -11,7 +11,8 @@ import { useBackend } from '@/data';
 import { useMyLocation } from '@/data/location';
 import type { PlaceKind } from '@/data/types';
 import { placeLatLng, useMapGeo, usePlaces } from '@/data/venue';
-import { distanceM, formatDistance, onPicture, walkMinutes } from '@/lib/geo';
+import { distanceM, formatDistance, onPicture, walkMinutes, type GeoFit } from '@/lib/geo';
+import { bestPath, type Pt } from '@/lib/walk';
 import { onMap, PLACE_KINDS } from '@/lib/venue';
 
 // Opening the map for one of these explains what you're looking at.
@@ -22,16 +23,23 @@ const INTRO: Partial<Record<PlaceKind, { title: string; body: string }>> = {
   bunkhouse: { title: 'Bunkhouses', body: 'Your team’s bunkhouse is on the Player tab once staff assign it.' },
 };
 
-/** The interactive park map: filter by kind, tap a pin for details, see where you are. ?kind=parking, ?place=<id> */
+/** Metres along a path on the picture, measured on the ground. */
+const routeMetres = (pts: Pt[], fit: GeoFit) => pts.reduce((m, p, i) => (i ? m + distanceM(fit.toLatLng(pts[i - 1].x, pts[i - 1].y), fit.toLatLng(p.x, p.y)) : 0), 0);
+
+/**
+ * The interactive park map: share your location to see "You're here", then tap a pin or anywhere on the map for the
+ * best walking path there, which follows you as you walk. Filter by kind. ?kind=parking, ?place=<id>
+ */
 export default function ParkMap() {
   const params = useLocalSearchParams<{ kind?: PlaceKind; place?: string }>();
   const backend = useBackend();
   const places = usePlaces();
-  const { map, fit, sample } = useMapGeo();
-  const loc = useMyLocation();
+  const { map, fit, walkGrid, sample } = useMapGeo();
+  const loc = useMyLocation({ resumeIfAllowed: !!fit });
   const { height } = useWindowDimensions();
   const [kind, setKind] = useState<PlaceKind | 'all'>(params.kind ?? 'all');
   const [selected, setSelected] = useState<string | null>(params.place ?? null);
+  const [dropped, setDropped] = useState<Pt | null>(null);
 
   const pinned = places.data.filter((p) => p.active && onMap(p));
   const kinds = [...new Set(pinned.map((p) => p.kind))];
@@ -43,8 +51,24 @@ export default function ParkMap() {
   const meXY = fit && loc.coords ? fit.toXY(loc.coords) : null;
   const here = meXY && onPicture(meXY) ? meXY : null;
   const away = loc.coords && fit && !here ? distanceM(loc.coords, fit.center) : null;
-  const focusLL = focus ? placeLatLng(focus, fit) : null;
-  const walk = here && loc.coords && focusLL ? distanceM(loc.coords, focusLL) : null;
+  // Where we're headed: a spot tapped on the map, else the selected pin.
+  const destXY = dropped ?? (focus && onMap(focus) ? { x: focus.x!, y: focus.y! } : null);
+  // Rounded so the path is only worked out again when the phone has really moved.
+  const hereKey = here ? `${here.x.toFixed(3)},${here.y.toFixed(3)}` : '';
+  const route = useMemo(
+    () => (walkGrid && here && destXY ? bestPath(walkGrid, here, destXY) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [walkGrid, hereKey, destXY?.x, destXY?.y],
+  );
+  const walk = fit && here && destXY ? (route ? routeMetres(route, fit) : distanceM(fit.toLatLng(here.x, here.y), fit.toLatLng(destXY.x, destXY.y))) : null;
+  const arrived = walk !== null && walk < 15;
+  const walkLine =
+    walk === null ? null : (
+      <Row gap={6}>
+        <Icon name={arrived ? 'flag' : 'walk'} size={18} color={C.navy} />
+        <Text style={styles.walk}>{arrived ? 'You’ve arrived' : `${route ? 'Best walking path' : 'About'}: ${walkMinutes(walk)} min · ${formatDistance(walk)}`}</Text>
+      </Row>
+    );
   // Somewhere sensible to pretend to stand in the demo: the information booth, else the middle of the map.
   const previewSpot = () => {
     const info = pinned.find((p) => p.kind === 'info') ?? pinned[0];
@@ -57,7 +81,7 @@ export default function ParkMap() {
       {intro ? <Body style={{ color: '#4A5568' }}>{intro.body}</Body> : null}
       <Segmented
         value={kind}
-        onChange={(k) => (setKind(k), setSelected(null))}
+        onChange={(k) => (setKind(k), setSelected(null), setDropped(null))}
         options={[{ value: 'all' as const, label: 'Everything' }, ...kinds.map((k) => ({ value: k, label: PLACE_KINDS[k].plural }))]}
       />
 
@@ -75,20 +99,38 @@ export default function ParkMap() {
         />
       )}
 
-      <SiteMap map={map} height={Math.max(320, height * 0.72)} places={shown} selectedId={focus?.id ?? null} onSelect={(p) => setSelected(p.id)} me={here} />
-      {focus ? (
-        <PlaceCard place={focus} hideMapLink>
-          {walk !== null && (
-            <Row gap={6}>
-              <Icon name="walk" size={18} color={C.navy} />
-              <Text style={styles.walk}>
-                About {walkMinutes(walk)} min walk · {formatDistance(walk)}
-              </Text>
+      <SiteMap
+        map={map}
+        height={Math.max(320, height * 0.72)}
+        places={shown}
+        selectedId={dropped ? null : (focus?.id ?? null)}
+        onSelect={(p) => (setSelected(p.id), setDropped(null))}
+        onPlace={(x, y) => (setDropped({ x, y }), setSelected(null))}
+        me={here}
+        route={route}
+        dest={dropped}
+      />
+      {dropped ? (
+        <Card>
+          <Row gap={S.md}>
+            <Icon name="location" size={26} color={C.red} />
+            <Body style={{ fontWeight: '800', flex: 1 }}>Your pin</Body>
+            <Button title="Clear" small variant="ghost" onPress={() => setDropped(null)} />
+          </Row>
+          {walkLine ?? <Caption>{fit ? 'Share your location above to get the best walking path here.' : 'Tap a pin to see what’s there.'}</Caption>}
+          {fit && (
+            <Row style={{ flexWrap: 'wrap' }} gap={6}>
+              <Button title="Walk" icon="walk" small variant="secondary" onPress={() => openDirections(fit.toLatLng(dropped.x, dropped.y), 'walking')} />
+              <Button title="Drive" icon="car" small variant="secondary" onPress={() => openDirections(fit.toLatLng(dropped.x, dropped.y), 'driving')} />
             </Row>
           )}
+        </Card>
+      ) : focus ? (
+        <PlaceCard place={focus} hideMapLink>
+          {walkLine}
         </PlaceCard>
       ) : (
-        <Caption>{here ? 'Tap a pin to see how far it is and get walking or driving directions.' : 'Tap a pin to see what’s there.'}</Caption>
+        <Caption>{here ? 'Tap a pin, or anywhere on the map, for the best walking path there.' : 'Tap a pin to see what’s there.'}</Caption>
       )}
       {kind !== 'all' && shown.length > 1 && (
         <Card style={{ gap: 0 }}>
@@ -136,7 +178,19 @@ function LocationBar({
 }) {
   if (status === 'off' || status === 'asking') {
     return (
-      <Button title="Show where I am" icon="locate" variant="dark" loading={status === 'asking'} onPress={onStart} />
+      <Card style={styles.note}>
+        <Row gap={S.md}>
+          <View style={styles.promptIcon}>
+            <Icon name="navigate" size={20} color={C.white} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Body style={{ fontWeight: '800' }}>Find your way around the Village</Body>
+            <Caption>Share your location to see where you are, then tap anywhere you want to go for the best walking path.</Caption>
+          </View>
+        </Row>
+        <Button title="Share my location" icon="locate" variant="dark" loading={status === 'asking'} onPress={onStart} />
+        {onPreview && <Button title="Preview at the park" icon="eye" small variant="ghost" onPress={onPreview} />}
+      </Card>
     );
   }
   if (status === 'denied' || status === 'error') {
@@ -182,6 +236,7 @@ function LocationBar({
 const styles = StyleSheet.create({
   walk: { color: C.navy, fontWeight: '800', fontSize: 15 },
   note: { gap: S.sm },
+  promptIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1A73E8', alignItems: 'center', justifyContent: 'center' },
   hereBar: { flexDirection: 'row', alignItems: 'center', gap: S.sm, backgroundColor: '#E8F0FE', borderRadius: R.lg, paddingVertical: S.sm, paddingHorizontal: S.md },
   hereDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#1A73E8', borderWidth: 2, borderColor: C.white },
   hereText: { flex: 1, color: '#174EA6', fontWeight: '800', fontSize: 14 },

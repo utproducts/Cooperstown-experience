@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEvent, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Line } from 'react-native-svg';
+import Svg, { Line, Polyline } from 'react-native-svg';
 
 import { C, R, S } from '@/constants/theme';
 import type { Place } from '@/data/types';
@@ -28,14 +28,18 @@ interface CanvasProps {
   onPlace?: (x: number, y: number) => void;
   /** Where the phone is, on the picture (0..1): shows "You're here", and a walking line to the selected place. */
   me?: { x: number; y: number } | null;
+  /** The best walking path to draw (from the walking grid); without one, a straight line to the selected place. */
+  route?: { x: number; y: number }[] | null;
+  /** A spot someone tapped to go to (not a place). */
+  dest?: { x: number; y: number } | null;
 }
 
 const ME = '#1A73E8';
 
 /**
  * The venue's own site map with a pin for each place. At first the whole map fits (nothing cut off); zoom with the
- * buttons, tap a pin to select it, or open it full screen. When `onPlace` is set (staff placing a pin), tapping the
- * map reports where, as 0..1 of the picture.
+ * buttons, tap a pin to select it, or open it full screen. When `onPlace` is set, tapping the map reports where, as
+ * 0..1 of the picture (staff placing a pin, or a family picking where to go); `tapHint` says what a tap does.
  */
 export function SiteMap({
   map,
@@ -44,6 +48,10 @@ export function SiteMap({
   onSelect,
   onPlace,
   me,
+  route,
+  dest,
+  tapHint,
+  closeOnTap,
   height = 520,
 }: {
   map: SiteMapImage | null;
@@ -52,6 +60,11 @@ export function SiteMap({
   onSelect?: (p: Place) => void;
   onPlace?: (x: number, y: number) => void;
   me?: { x: number; y: number } | null;
+  route?: { x: number; y: number }[] | null;
+  dest?: { x: number; y: number } | null;
+  tapHint?: string;
+  /** Full screen closes after a tap (staff placing one pin). */
+  closeOnTap?: boolean;
   height?: number;
 }) {
   const [full, setFull] = useState(false);
@@ -64,17 +77,17 @@ export function SiteMap({
       </View>
     );
   }
-  const canvas = { map, source, places, selectedId, onSelect, onPlace, me };
+  const canvas = { map, source, places, selectedId, onSelect, onPlace, me, route, dest };
   return (
     <View style={{ gap: S.sm }}>
       <MapCanvas {...canvas} maxHeight={height} framed onFullScreen={() => setFull(true)} />
-      {onPlace ? <Caption style={{ color: C.red, fontWeight: '700' }}>Tap the map where the pin goes.</Caption> : null}
-      {full && <FullScreenMap {...canvas} onClose={() => setFull(false)} />}
+      {onPlace && tapHint ? <Caption style={{ color: C.red, fontWeight: '700' }}>{tapHint}</Caption> : null}
+      {full && <FullScreenMap {...canvas} closeOnTap={closeOnTap} onClose={() => setFull(false)} />}
     </View>
   );
 }
 
-function FullScreenMap({ onClose, ...canvas }: CanvasProps & { onClose: () => void }) {
+function FullScreenMap({ onClose, closeOnTap, ...canvas }: CanvasProps & { onClose: () => void; closeOnTap?: boolean }) {
   const insets = useSafeAreaInsets();
   const selected = canvas.places.find((p) => p.id === canvas.selectedId);
   return (
@@ -83,10 +96,15 @@ function FullScreenMap({ onClose, ...canvas }: CanvasProps & { onClose: () => vo
         <View style={{ flex: 1 }}>
           <MapCanvas
             {...canvas}
-            onPlace={canvas.onPlace ? (x, y) => (canvas.onPlace!(x, y), onClose()) : undefined}
+            onPlace={canvas.onPlace && closeOnTap ? (x, y) => (canvas.onPlace!(x, y), onClose()) : canvas.onPlace}
             onClose={onClose}
           />
         </View>
+        {!selected && canvas.dest ? (
+          <View style={styles.fullCaption}>
+            <Text style={styles.fullCaptionText}>Your pin</Text>
+          </View>
+        ) : null}
         {selected ? (
           <View style={styles.fullCaption}>
             <Text style={styles.fullCaptionText} numberOfLines={1}>
@@ -113,6 +131,8 @@ function MapCanvas({
   onSelect,
   onPlace,
   me,
+  route,
+  dest,
   maxHeight,
   framed,
   onFullScreen,
@@ -128,15 +148,21 @@ function MapCanvas({
   const width = fitWidth * zoom;
   const imgHeight = width * ratio;
   const pinned = places.filter(onMap);
-  const target = me ? pinned.find((p) => p.id === selectedId) : undefined;
+  const selectedPin = pinned.find((p) => p.id === selectedId);
+  const target: { x: number; y: number } | null | undefined = me ? (dest ?? (selectedPin ? { x: selectedPin.x!, y: selectedPin.y! } : null)) : null;
+  const line = me && target ? (route?.length ? route : [me, target]) : null;
   // Keep "You're here" clear of the selected place's label (which sits above its pin) and of the bottom edge.
-  const meLabelAbove = !!me && (target ? target.y! > me.y : me.y > 0.9);
+  const meLabelAbove = !!me && (target ? target.y > me.y : me.y > 0.9);
   const ready = box.width > 0 && availHeight > 0;
 
   const place = (e: GestureResponderEvent) => {
     if (!onPlace || !width) return;
-    const { locationX, locationY } = e.nativeEvent;
-    onPlace(Math.min(1, Math.max(0, locationX / width)), Math.min(1, Math.max(0, locationY / imgHeight)));
+    // Phones report the tap within the map; browsers report it within whatever was clicked (the picture, same box).
+    const ne = e.nativeEvent as typeof e.nativeEvent & { offsetX?: number; offsetY?: number };
+    const lx = Number.isFinite(ne.locationX) ? ne.locationX : ne.offsetX;
+    const ly = Number.isFinite(ne.locationY) ? ne.locationY : ne.offsetY;
+    if (!Number.isFinite(lx) || !Number.isFinite(ly)) return;
+    onPlace(Math.min(1, Math.max(0, lx! / width)), Math.min(1, Math.max(0, ly! / imgHeight)));
   };
   // Centre the picture while it's smaller than the box.
   const padX = Math.max(0, (box.width - width) / 2);
@@ -163,16 +189,30 @@ function MapCanvas({
                     accessibilityLabel={`${p.name}, ${k.label}`}
                     onPress={() => onSelect?.(p)}
                     hitSlop={8}
-                    style={[styles.pin, { left: p.x! * width - size / 2, top: p.y! * imgHeight - size / 2, width: size, height: size, borderRadius: size / 2, backgroundColor: k.color }, on && styles.pinOn, target && !on && styles.pinFaded]}>
+                    style={[styles.pin, { left: p.x! * width - size / 2, top: p.y! * imgHeight - size / 2, width: size, height: size, borderRadius: size / 2, backgroundColor: k.color }, on && styles.pinOn, (line || dest) && !on && styles.pinFaded]}>
                     <Icon name={k.icon as IconName} size={on ? 20 : 14} color={C.white} />
                   </Pressable>
                 );
               })}
-              {me && target && (
+              {line && (
                 <Svg pointerEvents="none" width={width} height={imgHeight} style={StyleSheet.absoluteFill}>
-                  <Line x1={me.x * width} y1={me.y * imgHeight} x2={target.x! * width} y2={target.y! * imgHeight} stroke={C.white} strokeWidth={9} strokeLinecap="round" />
-                  <Line x1={me.x * width} y1={me.y * imgHeight} x2={target.x! * width} y2={target.y! * imgHeight} stroke={ME} strokeWidth={5} strokeDasharray="1 10" strokeLinecap="round" />
+                  {route?.length ? (
+                    <>
+                      <Polyline points={line.map((p) => `${p.x * width},${p.y * imgHeight}`).join(' ')} fill="none" stroke={C.white} strokeWidth={9} strokeLinecap="round" strokeLinejoin="round" />
+                      <Polyline points={line.map((p) => `${p.x * width},${p.y * imgHeight}`).join(' ')} fill="none" stroke={ME} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+                    </>
+                  ) : (
+                    <>
+                      <Line x1={line[0].x * width} y1={line[0].y * imgHeight} x2={line[1].x * width} y2={line[1].y * imgHeight} stroke={C.white} strokeWidth={9} strokeLinecap="round" />
+                      <Line x1={line[0].x * width} y1={line[0].y * imgHeight} x2={line[1].x * width} y2={line[1].y * imgHeight} stroke={ME} strokeWidth={5} strokeDasharray="1 10" strokeLinecap="round" />
+                    </>
+                  )}
                 </Svg>
+              )}
+              {dest && (
+                <View pointerEvents="none" style={[styles.dest, { left: dest.x * width - 18, top: dest.y * imgHeight - 34 }]}>
+                  <Icon name="location" size={36} color={C.red} />
+                </View>
               )}
               {me && (
                 <View pointerEvents="none" style={[styles.me, { left: me.x * width - 22, top: me.y * imgHeight - 22 }]}>
@@ -239,6 +279,7 @@ const styles = StyleSheet.create({
   pin: { position: 'absolute', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.white, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 3 },
   pinOn: { borderWidth: 3, zIndex: 2 },
   pinFaded: { opacity: 0.35 },
+  dest: { position: 'absolute', width: 36, height: 36, zIndex: 5 },
   label: { position: 'absolute', width: 180, backgroundColor: C.navy, borderRadius: R.sm, paddingVertical: 6, paddingHorizontal: 10, zIndex: 3 },
   labelText: { color: C.white, fontWeight: '700', fontSize: 13, textAlign: 'center' },
   me: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(26,115,232,0.22)', alignItems: 'center', justifyContent: 'center', zIndex: 4 },

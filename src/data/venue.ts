@@ -3,8 +3,10 @@ import { useMemo } from 'react';
 import type { SiteMapImage } from '@/components/site-map';
 import { imageSource } from '@/components/venue-image';
 import { fitGeo, type LatLng } from '@/lib/geo';
+import type { WalkGrid } from '@/lib/walk';
 import { onMap, type ParkRules } from '@/lib/venue';
 
+import WALK_GRID from './asv-walk-grid.json';
 import { useTable } from './index';
 import type { Place, PlaceKind } from './types';
 
@@ -41,7 +43,9 @@ export function useSiteMap() {
 export function useMapGeo() {
   const { value: map } = useSiteMap();
   const fit = useMemo(() => fitGeo(map.geo?.points, map.width, map.height), [map]);
-  return { map, fit, sample: !!map.geo?.sample };
+  // Walkways are traced for the Village's own campus map; an uploaded picture gets straight lines until it's traced.
+  const walkGrid = map.url === DEFAULT_SITE_MAP.url ? (WALK_GRID as WalkGrid) : null;
+  return { map, fit, walkGrid, sample: !!map.geo?.sample };
 }
 
 /** Where a pinned place really is, worked out from the map. */

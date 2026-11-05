@@ -75,6 +75,8 @@ export default function PlacesAdmin() {
           map={map}
           places={places.data}
           selectedId={placing}
+          tapHint="Tap the map where the pin goes."
+          closeOnTap
           onPlace={
             placing
               ? async (x, y) => {

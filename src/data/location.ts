@@ -9,7 +9,7 @@ export type LocationStatus = 'off' | 'asking' | 'on' | 'denied' | 'error';
  * The phone's position while a screen is open, only after the person taps to share it. `simulate` puts a pretend
  * position on the map (the demo, away from the Village).
  */
-export function useMyLocation() {
+export function useMyLocation({ resumeIfAllowed = false }: { resumeIfAllowed?: boolean } = {}) {
   const [status, setStatus] = useState<LocationStatus>('off');
   const [coords, setCoords] = useState<(LatLng & { accuracy: number | null }) | null>(null);
   const [simulated, setSimulated] = useState(false);
@@ -20,7 +20,7 @@ export function useMyLocation() {
     sub.current?.remove();
     sub.current = null;
   };
-  return {
+  const api = {
     status,
     coords,
     simulated,
@@ -59,4 +59,17 @@ export function useMyLocation() {
       setStatus('off');
     },
   };
+  // Someone who already said yes doesn't have to tap again: pick the position back up when the screen opens.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!resumeIfAllowed || started.current) return;
+    started.current = true;
+    Location.getForegroundPermissionsAsync()
+      .then((p) => {
+        if (p.granted) api.start();
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeIfAllowed]);
+  return api;
 }
