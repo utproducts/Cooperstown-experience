@@ -17,8 +17,8 @@ import { dateRange, formatDay, localDateKey } from '@/lib/time';
 
 const QUICK: { icon: IconName; label: string; href: string; needs?: keyof Features }[] = [
   { icon: 'qr-code', label: 'Check-in QR', href: '/fan/player', needs: 'rosters' },
-  { icon: 'calendar', label: 'Schedule', href: '/fan/schedule' },
-  { icon: 'people', label: 'Meetings', href: '/fan/meetings', needs: 'meetings' },
+  { icon: 'calendar', label: 'Game Schedule', href: '/fan/schedule' },
+  { icon: 'list', label: 'Itinerary', href: '/fan/itinerary' },
   { icon: 'camera', label: 'Photos', href: '/fan/photos', needs: 'photos' },
   { icon: 'fast-food', label: 'Order food', href: '/fan/food' },
   { icon: 'map', label: 'Park map', href: '/fan/map' },

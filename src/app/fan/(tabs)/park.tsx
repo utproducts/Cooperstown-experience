@@ -37,7 +37,7 @@ export default function ParkHub() {
     { icon: 'flag', title: 'Opening Ceremonies', subtitle: ceremony ? `${formatDay(ceremony.date)} · ${to12h(ceremony.time)} ${zoneLabel(tz)}` : 'Time, field and what to expect', color: '#B8433A', href: '/fan/ceremony' },
     { icon: 'trophy', title: 'Skills Competition', subtitle: 'Leaders and results', color: '#C9A227', href: '/fan/skills' },
     { icon: 'shield-checkmark', title: 'Park rules', subtitle: 'What you can and can’t bring', color: '#5B6B7F', href: '/fan/rules' },
-    { icon: 'map-outline', title: 'Week guide', subtitle: 'Day-by-day itinerary and FAQ', color: '#0E7490', href: '/fan/guide' },
+    { icon: 'list', title: 'Itinerary', subtitle: 'Day by day, with meetings and sessions', color: '#0E7490', href: '/fan/itinerary' },
   ];
   const around: Tile[] = [
     { icon: 'sparkles', title: 'Things to do', subtitle: 'Hall of Fame, Main Street, the lake…', color: '#B45309', href: '/fan/places?kind=attraction' },

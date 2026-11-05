@@ -33,19 +33,15 @@ export default function More() {
         <Divider />
         <ListItem icon="receipt" title="My orders & reservations" subtitle="Food, shop orders and table requests" onPress={() => router.push('/fan/orders' as never)} />
         <Divider />
-        {backend.features.meetings && (
-          <>
-            <ListItem icon="people" title="Meetings & sessions" subtitle="Book orientation, photo and office-hours slots" onPress={() => router.push('/fan/meetings')} />
-            <Divider />
-          </>
-        )}
+        <ListItem icon="list" title="Itinerary" subtitle="Your week day by day, with meetings and sessions" onPress={() => router.push('/fan/itinerary' as never)} />
+        <Divider />
         {backend.features.photos && (
           <>
             <ListItem icon="camera" title="Photos" subtitle="Team photos, memory mates, trading cards" onPress={() => router.push('/fan/photos')} />
             <Divider />
           </>
         )}
-        <ListItem icon="map" title="Week guide" subtitle="Itinerary, FAQ and places around town" onPress={() => router.push('/fan/guide')} />
+        <ListItem icon="map" title="Week guide" subtitle="FAQ and places around town" onPress={() => router.push('/fan/guide')} />
         {profile?.role === 'director' && (
           <>
             <Divider />

@@ -44,7 +44,7 @@ export default function Photos() {
     <Screen refreshing={products.loading} onRefresh={() => (products.refresh(), orders.refresh())}>
       <H1>Photos</H1>
       <Body style={{ color: C.muted }}>
-        Order prints from this week’s team and player photo sessions{player ? ` for ${player.firstName}` : ''}. Book your team’s photo session under Meetings.
+        Order prints from this week’s team and player photo sessions{player ? ` for ${player.firstName}` : ''}. Book your team’s photo session in the Itinerary.
       </Body>
       {products.data.length === 0 && <Empty icon="camera-outline" title="Photo packages coming soon" />}
       {products.data.map((p) => (

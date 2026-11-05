@@ -1,52 +1,21 @@
 import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Badge, Body, Caption, Card, Divider, H1, H3, Icon, ListItem, Row, Screen, Section } from '@/components/ui';
-import { FAQ, ITINERARY, PLACES } from '@/content/guide';
+import { Body, Card, Divider, H1, Icon, ListItem, Row, Screen, Section } from '@/components/ui';
+import { FAQ, PLACES } from '@/content/guide';
 import { C, S } from '@/constants/theme';
-import { useFanData } from '@/data/fan';
-import { dateRange, formatDay, localDateKey } from '@/lib/time';
 
 export default function Guide() {
-  const { event } = useFanData();
   const [open, setOpen] = useState<number | null>(0);
-  const days = event ? dateRange(event.startsOn, event.endsOn) : [];
-  const today = localDateKey(new Date().toISOString(), event?.timezone);
 
   return (
     <Screen>
       <H1>Week guide</H1>
-      <Section title="Itinerary">
-        {[...new Set(ITINERARY.map((i) => i.day))].map((day) => {
-          const date = days[day];
-          const isToday = date === today;
-          return (
-            <Card key={day} style={isToday ? { borderColor: C.red, borderWidth: 2 } : undefined}>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <H3>
-                  Day {day + 1}
-                  {date ? ` · ${formatDay(date)}` : ''}
-                </H3>
-                {isToday && <Badge label="Today" tone="red" />}
-              </Row>
-              {ITINERARY.filter((i) => i.day === day).map((i) => (
-                <Row key={i.title} gap={S.md} style={{ alignItems: 'flex-start' }}>
-                  <Icon name={i.icon} color={C.navy} />
-                  <View style={{ flex: 1 }}>
-                    <Body style={{ fontWeight: '700' }}>
-                      {i.time ? `${i.time} · ` : ''}
-                      {i.title}
-                    </Body>
-                    <Caption>{i.detail}</Caption>
-                  </View>
-                </Row>
-              ))}
-            </Card>
-          );
-        })}
-        <Caption>Times are typical for the week and may change — the Schedule and Alerts tabs are always current.</Caption>
-      </Section>
+      <Card>
+        <ListItem icon="list" title="Itinerary" subtitle="Your week day by day, with meetings and sessions" onPress={() => router.push('/fan/itinerary' as never)} />
+      </Card>
 
       <Section title="FAQ">
         <Card style={{ gap: 0 }}>
