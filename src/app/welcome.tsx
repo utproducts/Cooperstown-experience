@@ -76,8 +76,8 @@ export default function Welcome() {
       </Hero>
 
       {DEMO_URL && !backend.demoSignIn ? (
-        <Card onPress={openDemo} style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0', flexDirection: 'row', alignItems: 'center', gap: S.md }}>
-          <Icon name="flask" color="#8A6A00" size={22} />
+        <Card onPress={openDemo} style={{ backgroundColor: C.goldSoft, borderColor: '#BFE6FA', flexDirection: 'row', alignItems: 'center', gap: S.md }}>
+          <Icon name="flask" color="#00489E" size={22} />
           <View style={{ flex: 1 }}>
             <Body style={{ fontWeight: '700' }}>See the full demo</Body>
             <Caption>Every parent and staff screen on sample data, with a one-tap switch between the two.</Caption>
@@ -167,9 +167,9 @@ export default function Welcome() {
       </Card>
 
       {backend.demoSignIn && (
-        <Card style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0' }}>
+        <Card style={{ backgroundColor: C.goldSoft, borderColor: '#BFE6FA' }}>
           <Row>
-            <Icon name="flask" color="#8A6A00" />
+            <Icon name="flask" color="#00489E" />
             <H2 style={{ fontSize: 18 }}>Demo mode</H2>
           </Row>
           <Caption>

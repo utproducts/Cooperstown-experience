@@ -156,7 +156,7 @@ export default function Messages() {
           </Row>
         )}
         {target && (
-          <Card style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0', gap: 2 }}>
+          <Card style={{ backgroundColor: C.goldSoft, borderColor: '#BFE6FA', gap: 2 }}>
             <Body style={{ fontWeight: '700' }}>Goes to {target.name}</Body>
             <Caption>
               {weekRange(target)} · {audience === 'all' ? `all ${plural(teams.length, 'team')}` : `${recipients} of ${plural(teams.length, 'team')}`}

@@ -109,7 +109,7 @@ function CheckIn({ header }: { header?: ReactNode }) {
       <H1>Check-in</H1>
       {header}
       {d.players.length === 0 && (
-        <Card style={{ backgroundColor: C.goldSoft, borderColor: '#EAD9A0' }}>
+        <Card style={{ backgroundColor: C.goldSoft, borderColor: '#BFE6FA' }}>
           <Body style={{ fontWeight: '700' }}>No players in this week yet</Body>
           <Caption>Import a player roster (More → Import registrations) or add players on a team’s page. Each player gets a QR pass.</Caption>
         </Card>
